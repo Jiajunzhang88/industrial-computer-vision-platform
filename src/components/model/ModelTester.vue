@@ -21,26 +21,63 @@
 
           <!-- 参数设置 -->
           <div class="text-subtitle1 q-mb-sm">{{ t('modelTester.params.title') }}</div>
-          <q-input 
-            v-model.number="confThreshold" 
-            type="number" 
-            :label="t('modelTester.params.confThreshold')" 
-            outlined 
-            dense 
-            min="0" 
-            max="1" 
+
+          <div class="text-caption text-grey q-mb-xs">前级（预处理）</div>
+          <q-input
+            v-model.number="imgSize"
+            type="number"
+            label="推理图像尺寸 (imgsz)"
+            outlined
+            dense
+            min="320"
+            max="1280"
+            step="32"
+          />
+
+          <div class="text-caption text-grey q-mt-md q-mb-xs">后级（后处理 / NMS）</div>
+          <q-input
+            v-model.number="confThreshold"
+            type="number"
+            label="置信度阈值 (conf)"
+            outlined
+            dense
+            min="0"
+            max="1"
             step="0.05"
           />
-          <q-input 
-            v-model.number="iouThreshold" 
-            type="number" 
-            :label="t('modelTester.params.iouThreshold')" 
-            outlined 
-            dense 
-            min="0" 
-            max="1" 
+          <q-input
+            v-model.number="iouThreshold"
+            type="number"
+            label="IOU 阈值 (NMS)"
+            outlined
+            dense
+            min="0"
+            max="1"
             step="0.05"
             class="q-mt-sm"
+          />
+          <q-input
+            v-model.number="maxDet"
+            type="number"
+            label="最大检测数 (max_det)"
+            outlined
+            dense
+            min="1"
+            max="1000"
+            step="10"
+            class="q-mt-sm"
+          />
+          <q-toggle
+            v-model="agnosticNms"
+            label="类别无关 NMS (agnostic)"
+            class="q-mt-sm"
+            color="primary"
+          />
+          <q-toggle
+            v-model="autoRetest"
+            label="自动重新推理（调参数后自动重测）"
+            class="q-mt-sm"
+            color="primary"
           />
 
           <q-separator class="q-my-md" />
@@ -144,7 +181,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, defineEmits, watch } from 'vue';
+import { ref, defineProps, defineEmits, watch, onUnmounted } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { modelService, Model } from '../../services/model';
@@ -167,10 +204,84 @@ const previewUrl = ref<string | null>(null);
 const loading = ref(false);
 const capturing = ref(false);
 const confThreshold = ref(0.5);
-const iouThreshold = ref(0.6);
+const iouThreshold = ref(0.7);
+const maxDet = ref(300);
+const agnosticNms = ref(false);
+const imgSize = ref(640);
+const autoRetest = ref(false);
 const resultImage = ref<string | null>(null);
 const detections = ref<any[] | null>(null);
 const error = ref<string | null>(null);
+
+// 跨类别去重：同一物体（IOU > 阈值）只保留置信度最高的框
+function dedupBoxes(dets: any[], iouThreshold = 0.5): any[] {
+  if (!dets || dets.length === 0) return [];
+  // 按置信度从高到低排序
+  const sorted = [...dets].sort((a, b) => b.confidence - a.confidence);
+  const kept: any[] = [];
+  for (const det of sorted) {
+    let overlap = false;
+    for (const k of kept) {
+      const iou = calcIou(det.bbox, k.bbox);
+      if (iou > iouThreshold) {
+        overlap = true;
+        break;
+      }
+    }
+    if (!overlap) kept.push(det);
+  }
+  return kept;
+}
+
+function calcIou(box1: number[], box2: number[]): number {
+  const [x1, y1, x2, y2] = box1;
+  const [x1b, y1b, x2b, y2b] = box2;
+  const ix1 = Math.max(x1, x1b);
+  const iy1 = Math.max(y1, y1b);
+  const ix2 = Math.min(x2, x2b);
+  const iy2 = Math.min(y2, y2b);
+  const iw = Math.max(0, ix2 - ix1);
+  const ih = Math.max(0, iy2 - iy1);
+  const inter = iw * ih;
+  const area1 = (x2 - x1) * (y2 - y1);
+  const area2 = (x2b - x1b) * (y2b - y1b);
+  const union = area1 + area2 - inter;
+  return union > 0 ? inter / union : 0;
+}
+
+// 在图片上画检测框，返回 dataURL
+function drawBoxesOnImage(imageUrl: string, dets: any[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(imageUrl); return; }
+      ctx.drawImage(img, 0, 0);
+      // 画框
+      for (const det of dets) {
+        const [x1, y1, x2, y2] = det.bbox;
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+        // 标签背景
+        const label = `${det.class_name}`;
+        ctx.font = 'bold 18px Arial';
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(x1, Math.max(y1 - 25, 0), tw + 10, 22);
+        ctx.fillStyle = '#000000';
+        ctx.fillText(label, x1 + 5, Math.max(y1 - 8, 16));
+      }
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = () => resolve(imageUrl);
+    img.src = imageUrl;
+  });
+}
 
 // 图像选择处理
 const handleImageSelected = (file: File | null) => {
@@ -231,14 +342,22 @@ const testModel = async () => {
 
     const result = await modelService.testModelWithBase64(props.selectedModel.id, imageBase64, {
       conf_thres: confThreshold.value,
-      iou_thres: iouThreshold.value
+      iou_thres: iouThreshold.value,
+      max_det: maxDet.value,
+      agnostic_nms: agnosticNms.value,
+      imgsz: imgSize.value
     });
 
     if (result.success && result.image) {
-      resultImage.value = result.image;
-      detections.value = result.detections || [];
+      // 列表显示原始所有检测结果
+      const rawDets = result.detections || [];
+      detections.value = rawDets;
+      // 图片里：先按置信度阈值过滤，再去重，只画每个硬币置信度最高的那个
+      const filtered = rawDets.filter(d => d.confidence >= confThreshold.value);
+      const deduped = dedupBoxes(filtered, 0.5);
+      resultImage.value = await drawBoxesOnImage(previewUrl.value, deduped);
       
-      if (detections.value.length === 0) {
+      if (rawDets.length === 0) {
         $q.notify({
           type: 'info',
           message: t('modelTester.notifications.noObjectsDetected'),
@@ -284,6 +403,18 @@ watch(() => props.selectedModel, () => {
     confThreshold.value = props.selectedModel.parameters.conf_thres || 0.5;
     iouThreshold.value = props.selectedModel.parameters.iou_thres || 0.6;
   }
+});
+
+// 调参数自动重新推理（如果已经测试过且开关打开）
+let debounceTimer: any = null;
+watch([confThreshold, iouThreshold, maxDet, agnosticNms, imgSize], () => {
+  if (!autoRetest.value) return;
+  if (!previewUrl.value || !resultImage.value) return;
+  if (loading.value) return;
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    testModel();
+  }, 500);
 });
 </script>
 

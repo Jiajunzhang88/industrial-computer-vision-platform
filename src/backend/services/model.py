@@ -87,8 +87,8 @@ class YOLOModel:
             raise RuntimeError("模型未加载")
             
         try:
-            # 执行推理
-            results = self.model(image)
+            # 执行推理（imgsz 从实例属性读取）
+            results = self.model(image, imgsz=getattr(self, '_imgsz', 640))
             
             # 获取结果
             if self.architecture == ModelArchitecture.YOLO_V5:
@@ -1269,16 +1269,20 @@ class ModelService:
             logger.error(f"模型测试失败: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Model test failed: {str(e)}")
             
-    def test_model_image(self, model_id: int, image: np.ndarray, conf_thres: float = 0.25, iou_thres: float = 0.45):
+    def test_model_image(self, model_id: int, image: np.ndarray, conf_thres: float = 0.5, iou_thres: float = 0.6,
+                          max_det: int = 300, agnostic_nms: bool = False, imgsz: int = 640):
         """
         使用指定模型测试numpy格式的图像
-        
+
         Args:
             model_id: 模型ID
             image: 图像数据，numpy数组格式
-            conf_thres: 置信度阈值
-            iou_thres: IOU阈值
-            
+            conf_thres: 置信度阈值（后级）
+            iou_thres: NMS IOU阈值（后级）
+            max_det: 每张图最大检测数（后级）
+            agnostic_nms: 类别无关NMS（后级）
+            imgsz: 推理图像尺寸（前级）
+
         Returns:
             annotated_img, detections: 标注后的图像和检测结果
         """
@@ -1286,20 +1290,54 @@ class ModelService:
             # 检查图像是否有效
             if image is None or image.size == 0:
                 raise HTTPException(status_code=400, detail="Invalid image data")
-            
+
             # 获取并检查模型
             yolo_model = self.get_model_instance(model_id)
-            
-            # 应用模型参数
+
+            # 应用模型参数（后级）
             if hasattr(yolo_model.model, 'conf') and conf_thres is not None:
                 yolo_model.model.conf = conf_thres
-            
+
             if hasattr(yolo_model.model, 'iou') and iou_thres is not None:
                 yolo_model.model.iou = iou_thres
-            
+
+            if hasattr(yolo_model.model, 'max_det') and max_det is not None:
+                yolo_model.model.max_det = max_det
+
+            if hasattr(yolo_model.model, 'agnostic') and agnostic_nms is not None:
+                yolo_model.model.agnostic = agnostic_nms
+
+            # 设置推理图像尺寸（前级）
+            yolo_model._imgsz = imgsz
+
             # 执行预测
             annotated_img, detections = yolo_model.predict(image)
-            
+
+            # 后处理：同一位置的多个框只保留置信度最高的（按空间位置去重）
+            def compute_iou(box1, box2):
+                x1 = max(box1[0], box2[0])
+                y1 = max(box1[1], box2[1])
+                x2 = min(box1[2], box2[2])
+                y2 = min(box1[3], box2[3])
+                inter = max(0, x2 - x1) * max(0, y2 - y1)
+                area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+                area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+                union = area1 + area2 - inter
+                return inter / union if union > 0 else 0
+
+            detections = sorted(detections, key=lambda d: d['confidence'], reverse=True)
+            kept = []
+            for det in detections:
+                bbox = det['bbox']
+                duplicate = False
+                for k in kept:
+                    if compute_iou(bbox, k['bbox']) > 0.3:
+                        duplicate = True
+                        break
+                if not duplicate:
+                    kept.append(det)
+            detections = kept
+
             # 记录检测结果
             logger.info(f"模型 {model_id} 检测到 {len(detections)} 个对象")
             for i, det in enumerate(detections):

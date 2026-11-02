@@ -125,8 +125,11 @@ def export_model(model_id: int, db: Session = Depends(get_db)):
 # 采用base64图像方式测试模型
 class TestModelRequest(BaseModel):
     image_base64: str  # base64编码的图像
-    conf_thres: float = 0.25
-    iou_thres: float = 0.45
+    conf_thres: float = 0.5        # 置信度阈值（后级）
+    iou_thres: float = 0.6         # NMS IOU 阈值（后级）
+    max_det: int = 300             # 每张图最大检测数（后级）
+    agnostic_nms: bool = False      # 类别无关 NMS（后级）
+    imgsz: int = 640               # 推理图像尺寸（前级）
 
 @router.post("/{model_id}/test")
 async def test_model_base64(
@@ -175,7 +178,10 @@ async def test_model_base64(
             model_id=model_id,
             image=img,
             conf_thres=request.conf_thres,
-            iou_thres=request.iou_thres
+            iou_thres=request.iou_thres,
+            max_det=request.max_det,
+            agnostic_nms=request.agnostic_nms,
+            imgsz=request.imgsz
         )
         
         # 将结果图像编码为base64

@@ -65,6 +65,123 @@ app.include_router(camera.router)
 app.include_router(detection.router)
 app.include_router(dashboard_router)
 
+# ===== 实时检测 Pipeline =====
+pipeline_state = {
+    "running": False,
+    "interval": 5,  # 秒
+    "latest": None,  # 最新检测结果
+    "model_id": 1,
+    "conf_thres": 0.5,
+    "iou_thres": 0.7,
+}
+pipeline_lock = threading.Lock()
+
+@app.get("/api/pipeline/live")
+async def pipeline_live():
+    """获取最新实时检测结果"""
+    with pipeline_lock:
+        return {
+            "running": pipeline_state["running"],
+            "interval": pipeline_state["interval"],
+            "latest": pipeline_state["latest"],
+        }
+
+@app.post("/api/pipeline/start")
+async def pipeline_start():
+    """启动实时检测"""
+    with pipeline_lock:
+        pipeline_state["running"] = True
+    return {"status": "started"}
+
+@app.post("/api/pipeline/stop")
+async def pipeline_stop():
+    """停止实时检测"""
+    with pipeline_lock:
+        pipeline_state["running"] = False
+    return {"status": "stopped"}
+
+@app.post("/api/pipeline/config")
+async def pipeline_config(config: dict):
+    """配置实时检测参数"""
+    with pipeline_lock:
+        if "interval" in config:
+            pipeline_state["interval"] = max(1, int(config["interval"]))
+        if "model_id" in config:
+            pipeline_state["model_id"] = int(config["model_id"])
+        if "conf_thres" in config:
+            pipeline_state["conf_thres"] = float(config["conf_thres"])
+        if "iou_thres" in config:
+            pipeline_state["iou_thres"] = float(config["iou_thres"])
+    return {"status": "ok", "config": {k: pipeline_state[k] for k in ["interval", "model_id", "conf_thres", "iou_thres"]}}
+
+def pipeline_worker():
+    """后台线程：每 N 秒从摄像头抓拍，用 YOLO 模型检测硬币正反面"""
+    import cv2
+    import base64 as b64mod
+    import requests
+    while True:
+        time.sleep(1)
+        if not pipeline_state["running"]:
+            continue
+        try:
+            db = SessionLocal()
+            service = ModelService(db)
+            # 1. 从摄像头抓拍
+            snap = camera_service.get_frame(0)
+            if snap is None:
+                continue
+            img = snap if isinstance(snap, np.ndarray) else None
+            if img is None:
+                continue
+            # 2. 用 YOLO 模型检测
+            annotated_img, dets = service.test_model_image(
+                model_id=pipeline_state["model_id"],
+                image=img,
+                conf_thres=pipeline_state["conf_thres"],
+                iou_thres=pipeline_state["iou_thres"],
+                max_det=300,
+                agnostic_nms=False,
+                imgsz=640
+            )
+            # 3. 去重：每个物体只保留置信度最高的
+            dets_sorted = sorted(dets, key=lambda x: x["confidence"], reverse=True)
+            kept = []
+            for d in dets_sorted:
+                overlap = False
+                for k in kept:
+                    x1, y1, x2, y2 = d["bbox"]
+                    x1b, y1b, x2b, y2b = k["bbox"]
+                    ix1, iy1 = max(x1, x1b), max(y1, y1b)
+                    ix2, iy2 = min(x2, x2b), min(y2, y2b)
+                    iw, ih = max(0, ix2 - ix1), max(0, iy2 - iy1)
+                    inter = iw * ih
+                    area1 = (x2 - x1) * (y2 - y1)
+                    area2 = (x2b - x1b) * (y2b - y1b)
+                    iou = inter / (area1 + area2 - inter) if (area1 + area2 - inter) > 0 else 0
+                    if iou > 0.5:
+                        overlap = True
+                        break
+                if not overlap:
+                    kept.append(d)
+            # 4. 编码结果图
+            _, buf = cv2.imencode(".jpg", annotated_img)
+            img_b64 = b64mod.b64encode(buf).decode()
+            result = {
+                "timestamp": time.strftime("%H:%M:%S"),
+                "detections": kept,
+                "image": f"data:image/jpeg;base64,{img_b64}",
+            }
+            with pipeline_lock:
+                pipeline_state["latest"] = result
+            print(f"[Pipeline] {result['timestamp']} → 检测到 {len(kept)} 个物体")
+            db.close()
+        except Exception as e:
+            print(f"[Pipeline] 错误: {e}")
+        time.sleep(pipeline_state["interval"])
+
+# 启动 pipeline 后台线程
+threading.Thread(target=pipeline_worker, daemon=True).start()
+
 app.mount("/", StaticFiles(directory=dist_dir, html=True), name="frontend")
 
 
