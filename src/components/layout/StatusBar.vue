@@ -10,7 +10,7 @@
       class="menu-button"
       @click="$emit('toggleLeftDrawer')"
     />
-    
+
     <!-- 系统标题 -->
     <q-toolbar-title class="text-weight-medium system-title">
       <div class="title-container">
@@ -125,9 +125,8 @@
 </template>
 
 <script setup>
-import MetalTextures from '../common/MetalTextures.vue';
-import IndustrialIcons from '../common/IndustrialIcons.vue';
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import IndustrialIcons from '../common/IndustrialIcons.vue';
 import { useDeviceStore } from '../../stores/device'
 import { settingsService } from '../../services/settings'
 import { modelService } from '../../services/model'
@@ -266,12 +265,12 @@ onBeforeUnmount(() => {
   height: 40px;
   overflow: hidden;
   
-  .title-container {
-    height: 100%;
-    max-width: 300px;
-    border-radius: 4px;
-    overflow: hidden;
-  }
+  // .title-container {
+  //   height: 100%;
+  //   max-width: 300px;
+  //   border-radius: 4px;
+  //   overflow: hidden;
+  // }
   
   .title-background {
     height: 100%;
@@ -283,7 +282,7 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: center;
     padding: 0 16px;
-    font-weight: 500;
+    font-weight: 1000;
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
 }

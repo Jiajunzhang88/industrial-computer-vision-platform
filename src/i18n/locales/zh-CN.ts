@@ -13,7 +13,7 @@ export default {
     warning: '警告',
     info: '信息',
     menu: '菜单',
-    systemName: 'Industral Monitoring System',
+    systemName: 'Industrial Monitoring System',
   },
   settings: {
     system: {
@@ -150,7 +150,7 @@ export default {
     annotation: '数据标注',
     model: '模型训练',
     modelTest: '模型测试',
-    cvOperations: '图像处理',
+    cvOperations: '流水线操作',
     settings: '系统设置',
     notFound: '页面未找到'
   },
@@ -662,14 +662,47 @@ export default {
       title: '操作选择',
       select: '选择图像处理操作',
       selectRequired: '请选择操作',
+      none: '无操作',
+      unknown: '未知操作',
+      noSuitable: '没有找到合适的图像处理操作，请确保操作有图像输入',
+      noValid: '未找到有效的图像处理操作，请检查系统配置',
+      pleaseSelect: '请先选择一个操作，再进行图像处理',
       types: {
         single: '单步',
         pipeline: '流水线'
       },
+      testOnce: '单次测试',
       apply: '应用操作',
       startStream: '实时处理流',
       stopStream: '停止处理流',
       detection: '检测'
+    },
+    batch: {
+      title: '批量识别结果',
+      count: '共 {count} 张图片',
+      processing: '处理中',
+      done: '处理完成',
+      originalImage: '原始图像',
+      resultImage: '处理结果',
+      failed: '处理失败: {error}',
+      filename: '文件名',
+      status: '识别状态',
+      passed: '通过',
+      failedStatus: '失败',
+      text: '识别文本',
+      noText: '未识别到文本',
+      confidence: '置信度',
+      summary: {
+        total: '总计',
+        totalUnit: '图片数量',
+        pass: '通过',
+        passUnit: '识别成功',
+        fail: '失败',
+        failUnit: '识别失败'
+      },
+      progress: '正在批量处理图片 ({current}/{total})...',
+      complete: '批量处理完成，共处理 {count} 张图片',
+      failedGeneric: '批量处理失败: {error}'
     },
     result: {
       title: '检测结果',
@@ -717,7 +750,22 @@ export default {
       processingFailed: '处理图像失败: {error}',
       uploadImage: '没有活动的相机流，请上传一张图片',
       noCameraControl: '找不到相机控件',
-      cameraSelected: '已选择相机: {name}'
+      cameraSelected: '已选择相机: {name}',
+      stopStreamWarning: '停止处理时遇到问题，请检查后端服务状态',
+      stopStreamFailed: '停止处理流失败: {error}',
+      sourceUploaded: '上传的图片',
+      sourceCamera: '相机捕获',
+      processingSource: '正在处理{source}...',
+      invalidOperationId: '无效的操作ID',
+      noCameraSelected: '未选择摄像头',
+      loadOperationsFailed: '加载操作列表失败',
+      loadCamerasFailed: '获取相机列表失败',
+      updateSettingsFailed: '更新相机设置失败',
+      getOriginalImageFailed: '获取原始图像失败',
+      processFailed: '处理失败',
+      unknownError: '未知错误',
+      batchUpload: '批量上传',
+      cameraStreamFailed: '相机流连接失败，请检查相机状态'
     },
     status: {
       online: '在线',

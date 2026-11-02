@@ -13,7 +13,7 @@ export default {
     warning: 'تحذير',
     info: 'معلومات',
     menu: 'القائمة',
-    systemName: 'Industral Monitoring System',
+    systemName: 'Industrial Monitoring System',
   },
   settings: {
     system: {
@@ -150,7 +150,7 @@ export default {
     annotation: 'تحديد البيانات',
     model: 'تدريب النموذج',
     modelTest: 'اختبار النموذج',
-    cvOperations: 'معالجة الصور',
+    cvOperations: 'عملية خط الإنتاج',
     settings: 'الإعدادات',
     notFound: 'الصفحة غير موجودة'
   },

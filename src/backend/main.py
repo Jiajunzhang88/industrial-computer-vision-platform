@@ -28,8 +28,8 @@ if platform.system() == "Windows":
 
 # 创建FastAPI应用实例
 app = FastAPI(
-    title="Industral Monitoring System API",
-    description="Industral Monitoring System 的后端API服务",
+    title="Industrial Monitoring System API",
+    description="Industrial Monitoring System 的后端API服务",
     version="1.0.0"
 )
 

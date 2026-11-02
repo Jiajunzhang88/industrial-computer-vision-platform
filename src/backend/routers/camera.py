@@ -185,33 +185,83 @@ def get_camera_snapshot(
         # 如果需要返回JSON格式，但请求处理后的数据
         if return_json:
             try:
-                # 使用camera_service处理帧以避免线程问题
-                # 注意这里直接使用已有的apply_operation_to_frame方法处理图像，这是已经适配多线程的
-                processed_frame = camera_service.apply_operation_to_frame(frame_data, operation_id, operation_type, db)
-                
+                # 使用带详情的处理方法，同时拿到图像和结构化输出参数
+                processed_frame, outputs = camera_service.apply_operation_to_frame_with_details(
+                    frame_data, operation_id, operation_type, db
+                )
+
                 if not processed_frame:
-                    # 处理失败，返回原始图像
-                    base64_data = base64.b64encode(frame_data).decode('utf-8')
-                    return {
-                        "image": f"data:image/jpeg;base64,{base64_data}",
-                        "text": "",
-                        "confidence": 0,
-                        "passed": False,
-                        "error": "处理图像失败"
-                    }
-                
+                    processed_frame = frame_data
+
+                # 如果 outputs 里已经带了画好检测框的 base64 图（YOLO fallback 路径），优先用它
+                annotated_b64 = None
+                detections = []
+                if outputs:
+                    if isinstance(outputs.get("image"), str) and outputs["image"]:
+                        annotated_b64 = outputs.pop("image")
+                    if isinstance(outputs.get("detections"), list):
+                        detections = outputs.pop("detections")
+
                 # 将处理后的图像转为base64
                 base64_data = base64.b64encode(processed_frame).decode('utf-8')
-                
-                # 简化的响应数据，不尝试提取文本和置信度
-                # 这样可以避免在此API中使用可能导致线程问题的代码
+
+                # 从结构化输出中提取 confidence / passed / 可读 text
+                confidence = 0.0
+                text_parts = []
+                passed = False
+                for k, v in (outputs or {}).items():
+                    kl = str(k).lower()
+                    if kl in ('confidence', 'score', 'probability', 'conf'):
+                        try:
+                            confidence = float(v)
+                        except (TypeError, ValueError):
+                            pass
+                    elif kl in ('passed', 'is_passed', 'ok', 'success', 'is_ok'):
+                        passed = bool(v)
+                    elif v is not None:
+                        text_parts.append(f"{k}: {v}")
+                text = ", ".join(text_parts) if text_parts else ""
+
+                # 保存报警图和日志到 record 目录（在原始帧上画检测框后保存）
+                try:
+                    from datetime import datetime as _dt
+                    import os as _os
+                    import cv2 as _cv2
+                    _root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+                    _alarm_dir = _os.path.join(_root, "record", "alarm_png")
+                    _log_dir = _os.path.join(_root, "record", "log")
+                    _os.makedirs(_alarm_dir, exist_ok=True)
+                    _os.makedirs(_log_dir, exist_ok=True)
+                    _ts = _dt.now().strftime("%Y%m%d_%H%M%S_%f")
+                    # 解码原始帧，在上面画检测框
+                    _nparr = np.frombuffer(processed_frame, np.uint8)
+                    _img = _cv2.imdecode(_nparr, _cv2.IMREAD_COLOR)
+                    if _img is not None and detections:
+                        for _d in detections:
+                            _bbox = _d.get("bbox", [0,0,0,0])
+                            _x1, _y1, _x2, _y2 = [int(v) for v in _bbox]
+                            _cv2.rectangle(_img, (_x1, _y1), (_x2, _y2), (0, 255, 0), 2)
+                            _label = f"{_d.get('class_name','')} {_d.get('confidence',0)*100:.1f}%"
+                            _cv2.putText(_img, _label, (_x1, max(_y1-5, 10)), _cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+                    _, _jpeg = _cv2.imencode(".jpg", _img)
+                    _img_path = _os.path.join(_alarm_dir, f"alarm_{_ts}.jpg")
+                    with open(_img_path, "wb") as _f:
+                        _f.write(_jpeg.tobytes())
+                    _log_path = _os.path.join(_log_dir, f"detection_{_dt.now().strftime('%Y%m%d')}.log")
+                    with open(_log_path, "a", encoding="utf-8") as _lf:
+                        _lf.write(f"[{_dt.now().strftime('%Y-%m-%d %H:%M:%S')}] camera={camera_id} op={operation_id} type={operation_type} text={text} confidence={confidence:.4f} dets={len(detections)}\n")
+                except Exception as _save_err:
+                    logger.warning(f"保存报警图/日志失败: {_save_err}")
+
                 return {
-                    "image": f"data:image/jpeg;base64,{base64_data}",
-                    "text": "",  # 当前版本不支持提取文本
-                    "confidence": 0,  # 当前版本不支持提取置信度
-                    "passed": False  # 当前版本不支持判断通过状态
+                    "image": f"data:image/jpeg;base64,{annotated_b64}" if annotated_b64 else f"data:image/jpeg;base64,{base64_data}",
+                    "text": text,
+                    "confidence": confidence,
+                    "passed": passed,
+                    "detections": detections,
+                    "outputs": outputs or {}
                 }
-                
+
             except Exception as e:
                 logger.error(f"JSON处理图像失败: {str(e)}")
                 # 处理失败，返回原始图像和错误信息
@@ -498,3 +548,36 @@ def force_release_camera():
         logger.info("强制释放完成，未发现占用摄像头的常见进程")
 
     return {"success": True, "killed": killed}
+
+
+# ============ 报警图片记录 ============
+import os as _os_record
+from datetime import datetime as _dt_record
+
+def _get_record_dir(sub: str) -> str:
+    _root = _os_record.path.dirname(_os_record.path.dirname(_os_record.path.dirname(_os_record.path.dirname(_os_record.path.abspath(__file__)))))
+    _dir = _os_record.path.join(_root, "record", sub)
+    _os_record.makedirs(_dir, exist_ok=True)
+    return _dir
+
+@router.get("/record/alarm_images")
+def list_alarm_images(limit: int = 50):
+    """返回最近的报警图片文件名列表（新的在前）"""
+    _dir = _get_record_dir("alarm_png")
+    files = [f for f in _os_record.listdir(_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))]
+    files.sort(reverse=True)
+    return {"images": files[:limit]}
+
+@router.get("/record/alarm_images/{filename}")
+def get_alarm_image(filename: str):
+    """返回指定报警图片"""
+    # 防目录穿越
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    _dir = _get_record_dir("alarm_png")
+    path = _os_record.path.join(_dir, filename)
+    if not _os_record.path.exists(path):
+        raise HTTPException(status_code=404, detail="Not found")
+    with open(path, "rb") as f:
+        content = f.read()
+    return Response(content=content, media_type="image/jpeg")

@@ -293,6 +293,90 @@ class FrameProcessor:
             # 确保在任何错误情况下都返回原始帧
             return frame_data
 
+    def process_frame_with_details(self, frame_data: bytes, operation_id: int, operation_type: str) -> Tuple[bytes, dict]:
+        """处理单帧，同时返回处理后的JPEG和结构化输出参数。
+
+        返回 (processed_jpeg_bytes, outputs_dict)。outputs_dict 形如
+        {'side': 'front', 'confidence': 0.95, 'text': 'front'}，
+        其中 text 是把所有非图像、非 confidence 的输出参数拼成的可读字符串。
+        """
+        outputs: dict = {}
+        try:
+            img = self.decode_frame(frame_data)
+            if img is None:
+                return frame_data, outputs
+
+            processed_img = None
+            if operation_type == 'operation':
+                operation = self.cv_operation_service.get_operation(operation_id)
+                if not operation:
+                    return frame_data, outputs
+                input_param_name = self.get_image_param_name(operation.input_params)
+                result = self.cv_operation_service.apply_operation(operation_id, {input_param_name: img})
+                # result 是 {param_name: value}
+                outputs = {k: v for k, v in result.items() if not isinstance(v, np.ndarray)}
+                if operation.output_params:
+                    out_img_name = self.get_image_param_name(operation.output_params)
+                    if out_img_name in result:
+                        processed_img = result[out_img_name]
+                if processed_img is None:
+                    for value in result.values():
+                        if isinstance(value, np.ndarray):
+                            processed_img = value
+                            break
+            elif operation_type == 'pipeline':
+                pipeline = self.pipeline_service.get_pipeline(operation_id)
+                if not pipeline:
+                    return frame_data, outputs
+                input_param_name = self.get_image_param_name(pipeline.input_params)
+                result = self.pipeline_service.apply_pipeline(operation_id, {input_param_name: img})
+                out_params = result.get('outputParams', {}) if isinstance(result, dict) else {}
+                outputs = {k: v for k, v in out_params.items() if not isinstance(v, np.ndarray)}
+                # 如果 out_params 里带了 base64 标注图（YOLO fallback 路径），解码出来作为 processed_img
+                if isinstance(out_params.get("image"), str) and out_params["image"]:
+                    try:
+                        import base64 as _b64
+                        import cv2 as _cv2
+                        import numpy as _np
+                        img_bytes = _b64.b64decode(out_params["image"])
+                        nparr = _np.frombuffer(img_bytes, _np.uint8)
+                        decoded = _cv2.imdecode(nparr, _cv2.IMREAD_COLOR)
+                        if decoded is not None:
+                            processed_img = decoded
+                    except Exception:
+                        pass
+                # 如果 out_params["image"] 是 ndarray（带检测框的标注图），直接作为 processed_img，
+                # 同时编码成 base64 字符串放到 outputs["image"] 里传给 router 保存
+                if isinstance(out_params.get("image"), np.ndarray):
+                    processed_img = out_params["image"]
+                    try:
+                        import cv2 as _cv2
+                        import base64 as _b64
+                        _, _buf = _cv2.imencode(".jpg", out_params["image"])
+                        outputs["image"] = _b64.b64encode(_buf).decode()
+                    except Exception:
+                        pass
+                if pipeline.output_params:
+                    out_img_name = self.get_image_param_name(pipeline.output_params)
+                    if out_img_name in out_params and isinstance(out_params[out_img_name], np.ndarray):
+                        processed_img = out_params[out_img_name]
+                if processed_img is None:
+                    for value in out_params.values():
+                        if isinstance(value, np.ndarray):
+                            processed_img = value
+                            break
+            else:
+                return frame_data, outputs
+
+            if processed_img is not None:
+                encoded = self.encode_frame(processed_img)
+                if encoded is not None:
+                    return encoded, outputs
+            return frame_data, outputs
+        except Exception as e:
+            logger.exception(f"process_frame_with_details 失败: {e}")
+            return frame_data, outputs
+
 class FrameBuffer:
     """帧缓存管理器，用于优化帧的存储和访问"""
     
@@ -1322,6 +1406,25 @@ class CameraService:
         except Exception as e:
             logger.exception(f"应用操作到帧时发生错误: {str(e)}")
             return frame
+
+    def apply_operation_to_frame_with_details(self, frame: bytes, operation_id: int, operation_type: str, db: Session) -> Tuple[bytes, dict]:
+        """对单帧应用操作，返回 (处理后JPEG, 结构化输出dict)。"""
+        try:
+            if frame is None or len(frame) == 0:
+                return b'', {}
+            if operation_type not in ['operation', 'pipeline']:
+                return frame, {}
+            if not isinstance(operation_id, int) or operation_id <= 0:
+                return frame, {}
+
+            processor = self.get_frame_processor(db)
+            if processor is None:
+                return frame, {}
+            processor.last_used = time.time()
+            return processor.process_frame_with_details(frame, operation_id, operation_type)
+        except Exception as e:
+            logger.exception(f"apply_operation_to_frame_with_details 失败: {e}")
+            return frame, {}
 
     def get_processed_stream_key(self, camera_id: str, operation_id: int, operation_type: str) -> str:
         """生成处理流的唯一键值"""

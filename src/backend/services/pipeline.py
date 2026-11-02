@@ -351,6 +351,12 @@ class PipelineService:
                     output_params[param_name] = result[param_name]
                 else:
                     output_params[param_name] = result[param_name]
+
+            # 兜底：如果执行结果里额外带了 image / detections（YOLO fallback 返回的标注图和检测框），也一并带上
+            if "image" in result and "image" not in output_params:
+                output_params["image"] = result["image"]
+            if "detections" in result and "detections" not in output_params:
+                output_params["detections"] = result["detections"]
             
             return {
                 'outputParams': output_params,
@@ -940,6 +946,18 @@ class PipelineService:
                 if param_name not in output:
                     output[param_name] = param.get("default")
         
+        # 兜底：从所有操作节点结果里找 image / detections（YOLO fallback 返回的标注图和检测框），即使 outputMappings 没映射也带上
+        if "image" not in output:
+            for nr in node_results.values():
+                if isinstance(nr.result, dict) and nr.result.get("image") is not None:
+                    output["image"] = nr.result["image"]
+                    break
+        if "detections" not in output:
+            for nr in node_results.values():
+                if isinstance(nr.result, dict) and nr.result.get("detections") is not None:
+                    output["detections"] = nr.result["detections"]
+                    break
+
         # 验证输出参数
         self._validate_output_params(pipeline, output)
         
@@ -1019,28 +1037,30 @@ class PipelineService:
                         print(f"[Pipeline] params keys: {list(params.keys())}")
                         image_b64 = params.get("image", "")
                         print(f"[Pipeline] image_b64 type: {type(image_b64)}, len: {len(str(image_b64))}")
-                        if image_b64:
+                        if image_b64 is not None:
                             # 调用 YOLO 模型检测
                             from .model import ModelService
                             model_service = ModelService(self.db)
-                            # 解码 base64 图片
+                            # 解码 base64 图片；如果传进来的已经是 numpy ndarray（来自摄像头帧），直接用
                             import base64
                             import cv2
                             import numpy as np
-                            # 确保 image_b64 是字符串
-                            if not isinstance(image_b64, str):
-                                print(f"[Pipeline] image_b64 is not string, converting...")
-                                image_b64 = str(image_b64)
-                            if image_b64.startswith("data:"):
-                                image_b64 = image_b64.split(",")[1]
-                            nparr = np.frombuffer(base64.b64decode(image_b64), np.uint8)
-                            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                            if isinstance(image_b64, np.ndarray):
+                                img = image_b64
+                            else:
+                                if not isinstance(image_b64, str):
+                                    image_b64 = str(image_b64)
+                                if image_b64.startswith("data:"):
+                                    image_b64 = image_b64.split(",")[1]
+                                nparr = np.frombuffer(base64.b64decode(image_b64), np.uint8)
+                                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                             print(f"[Pipeline] img is None: {img is None}, shape: {img.shape if img is not None else 'None'}")
                             if img is not None and img.size > 0:
                                 # 根据 operation_id 作为 model_id 来调用 YOLO 模型
                                 from .model import Model
+                                from ..models import ModelStatus
                                 model = self.db.query(Model).filter(Model.id == operation_id).first()
-                                if model and model.status == 'completed':
+                                if model and model.status == ModelStatus.COMPLETED:
                                     # 用选择的模型检测
                                     annotated_img, dets = model_service.test_model_image(
                                         model_id=operation_id,
@@ -1055,9 +1075,16 @@ class PipelineService:
                                     _, buf = cv2.imencode(".jpg", annotated_img)
                                     result_img_b64 = base64.b64encode(buf).decode()
                                     result = {
-                                        "side": dets[0]["class"] if dets else "无检测",
-                                        "confidence": dets[0]["confidence"] if dets else 0,
-                                        "image": result_img_b64
+                                        "side": dets[0].get("class_name", "无检测") if dets else "无检测",
+                                        "confidence": dets[0].get("confidence", 0) if dets else 0,
+                                        "image": result_img_b64,
+                                        "detections": [
+                                            {
+                                                "bbox": [float(v) for v in d.get("bbox", [0,0,0,0])],
+                                                "class_name": d.get("class_name", ""),
+                                                "confidence": float(d.get("confidence", 0))
+                                            } for d in dets
+                                        ]
                                     }
                                     results[node_id] = NodeResult(
                                         node_type=NodeType.OPERATION,

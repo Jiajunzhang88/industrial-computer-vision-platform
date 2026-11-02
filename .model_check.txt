@@ -1,0 +1,1 @@
+[(1, 'test_coin', 'COMPLETED'), (2, 'test_sensor', 'FAILED')]

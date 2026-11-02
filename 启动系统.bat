@@ -1,5 +1,5 @@
 @echo off
-title Industral Monitoring System
+title Industrial Monitoring System
 cd /d "%~dp0"
 
 rem --- check venv ---
@@ -13,7 +13,7 @@ if not exist ".venv\Scripts\python.exe" (
 set "PATH=%~dp0.venv\Scripts;%PATH%"
 
 echo ==========================================================
-echo   Industral Monitoring System
+echo   Industrial Monitoring System
 echo   URL : http://127.0.0.1:8000/
 echo   API : http://127.0.0.1:8000/docs
 echo   A server window will open - close it to stop the system.

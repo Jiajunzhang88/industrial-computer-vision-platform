@@ -13,7 +13,7 @@ export default {
     warning: 'Warning',
     info: 'Info',
     menu: 'Menu',
-    systemName: 'Industral Monitoring System',
+    systemName: 'Industrial Monitoring System',
   },
   settings: {
     system: {
@@ -150,7 +150,7 @@ export default {
     annotation: 'Data Annotation',
     model: 'Model Training',
     modelTest: 'Model Test',
-    cvOperations: 'Image Processing',
+    cvOperations: 'Pipeline Operation',
     settings: 'Settings',
     notFound: 'Page Not Found'
   },
@@ -662,14 +662,47 @@ export default {
       title: 'Operation Selection',
       select: 'Select Image Processing Operation',
       selectRequired: 'Please select an operation',
+      none: 'No Operation',
+      unknown: 'Unknown Operation',
+      noSuitable: 'No suitable image processing operation found. Please ensure the operation has an image input.',
+      noValid: 'No valid image processing operation found. Please check system configuration.',
+      pleaseSelect: 'Please select an operation first before processing images',
       types: {
         single: 'Single',
         pipeline: 'Pipeline'
       },
+      testOnce: 'SINGLE TEST',
       apply: 'Apply Operation',
       startStream: 'Start Processing Stream',
       stopStream: 'Stop Processing Stream',
       detection: 'Detection'
+    },
+    batch: {
+      title: 'Batch Results',
+      count: '{count} images',
+      processing: 'Processing',
+      done: 'Completed',
+      originalImage: 'Original Image',
+      resultImage: 'Result',
+      failed: 'Failed: {error}',
+      filename: 'Filename',
+      status: 'Status',
+      passed: 'Pass',
+      failedStatus: 'Fail',
+      text: 'Text',
+      noText: 'No text recognized',
+      confidence: 'Confidence',
+      summary: {
+        total: 'Total',
+        totalUnit: 'images',
+        pass: 'Passed',
+        passUnit: 'recognized',
+        fail: 'Failed',
+        failUnit: 'failed'
+      },
+      progress: 'Batch processing images ({current}/{total})...',
+      complete: 'Batch processing complete: {count} images processed',
+      failedGeneric: 'Batch processing failed: {error}'
     },
     result: {
       title: 'Detection Results',
@@ -717,7 +750,22 @@ export default {
       processingFailed: 'Failed to process image: {error}',
       uploadImage: 'No active camera stream, please upload an image',
       noCameraControl: 'Camera control not found',
-      cameraSelected: 'Selected camera: {name}'
+      cameraSelected: 'Selected camera: {name}',
+      stopStreamWarning: 'Problem encountered while stopping processing, please check backend service status',
+      stopStreamFailed: 'Failed to stop processing stream: {error}',
+      sourceUploaded: 'uploaded image',
+      sourceCamera: 'camera capture',
+      processingSource: 'Processing {source}...',
+      invalidOperationId: 'Invalid operation ID',
+      noCameraSelected: 'No camera selected',
+      loadOperationsFailed: 'Failed to load operations',
+      loadCamerasFailed: 'Failed to load camera list',
+      updateSettingsFailed: 'Failed to update camera settings',
+      getOriginalImageFailed: 'Failed to get original image',
+      processFailed: 'Processing failed',
+      unknownError: 'Unknown error',
+      batchUpload: 'Batch upload',
+      cameraStreamFailed: 'Camera stream connection failed, please check camera status'
     },
     status: {
       online: 'Online',
