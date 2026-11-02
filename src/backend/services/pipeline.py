@@ -535,6 +535,89 @@ class PipelineService:
                 # 尝试从数据库重新获取操作
                 operation = self.db.query(CVOperation).filter(CVOperation.id == operation_id).first()
                 if not operation:
+                    # 尝试用 YOLO 模型检测
+                    try:
+                        if enable_log:
+                            self._add_log(logs, "INFO", f"尝试使用 YOLO 模型 {operation_id} 检测...")
+                        # 获取参数
+                        params = self._resolve_node_params(node, nodes, results, input_params)
+                        image_b64 = params.get("image", "")
+                        # 先判断是不是 numpy 数组，避免做布尔判断报错
+                        if isinstance(image_b64, np.ndarray):
+                            # 已经是 numpy 数组了，直接用
+                            img = image_b64
+                            if enable_log:
+                                self._add_log(logs, "INFO", f"image 已是 numpy 数组，shape: {img.shape}")
+                        elif image_b64:
+                            from .model import ModelService, Model
+                            model_service = ModelService(self.db)
+                            # 解码 base64 图片
+                            if enable_log:
+                                self._add_log(logs, "INFO", f"image_b64 长度: {len(image_b64)}, 前50字符: {image_b64[:50]}")
+                            if image_b64.startswith("data:"):
+                                image_b64 = image_b64.split(",")[1]
+                            # 去掉可能的空格和换行
+                            image_b64 = image_b64.replace(" ", "").replace("\n", "").replace("\r", "")
+                            # 补齐 base64 padding
+                            missing_padding = len(image_b64) % 4
+                            if missing_padding:
+                                image_b64 += '=' * (4 - missing_padding)
+                            nparr = np.frombuffer(base64.b64decode(image_b64), np.uint8)
+                            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                        else:
+                            img = None
+                        
+                        if img is not None and img.size > 0:
+                            from .model import ModelService, Model
+                            model_service = ModelService(self.db)
+                            # 查询模型是否存在且已完成
+                            from ..models import ModelStatus
+                            model = self.db.query(Model).filter(Model.id == operation_id).first()
+                            if model and model.status == ModelStatus.COMPLETED:
+                                # 从模型 parameters 里读取推理参数
+                                model_params = model.parameters or {}
+                                conf_thres = model_params.get('conf_thres', 0.5)
+                                iou_thres = model_params.get('iou_thres', 0.7)
+                                max_det = model_params.get('max_det', 300)
+                                agnostic_nms = model_params.get('agnostic_nms', False)
+                                imgsz = model_params.get('imgsz', 640)
+                                if enable_log:
+                                    self._add_log(logs, "INFO", f"模型参数: conf={conf_thres}, iou={iou_thres}, imgsz={imgsz}")
+                                annotated_img, dets = model_service.test_model_image(
+                                    model_id=operation_id,
+                                    image=img,
+                                    conf_thres=conf_thres,
+                                    iou_thres=iou_thres,
+                                    max_det=max_det,
+                                    agnostic_nms=agnostic_nms,
+                                    imgsz=imgsz
+                                )
+                                _, buf = cv2.imencode(".jpg", annotated_img)
+                                result_img_b64 = base64.b64encode(buf).decode()
+                                result = {
+                                    "side": dets[0]["class_name"] if dets else "无检测",
+                                    "confidence": dets[0]["confidence"] if dets else 0,
+                                    "image": result_img_b64
+                                }
+                                results[node_id] = NodeResult(
+                                    node_type=NodeType.OPERATION,
+                                    operation_id=operation_id,
+                                    operation_name=f"YOLO模型-{model.name}",
+                                    result=result
+                                )
+                                if enable_log:
+                                    self._add_log(logs, "INFO", f"YOLO 模型检测成功: {len(dets)} 个物体")
+                                return
+                            else:
+                                if enable_log:
+                                    self._add_log(logs, "ERROR", f"模型 {operation_id} 不存在或未完成")
+                    except Exception as e:
+                        import traceback
+                        error_detail = traceback.format_exc()
+                        if enable_log:
+                            self._add_log(logs, "ERROR", f"YOLO 模型检测失败: {str(e)}")
+                            self._add_log(logs, "ERROR", f"详细错误: {error_detail[-500:]}")
+                    
                     # 记录错误但继续执行
                     if enable_log:
                         error_msg = f"找不到节点 {node_name} 引用的操作 {operation_id}"
@@ -928,6 +1011,69 @@ class PipelineService:
                 # 尝试从数据库重新获取操作
                 operation = self.db.query(CVOperation).filter(CVOperation.id == operation_id).first()
                 if not operation:
+                    # 如果操作不存在，尝试调用 YOLO 模型检测
+                    print(f"Warning: Operation {operation_id} not found, trying YOLO model...")
+                    try:
+                        # 获取参数
+                        params = self._resolve_node_params(node, nodes, results, input_params)
+                        print(f"[Pipeline] params keys: {list(params.keys())}")
+                        image_b64 = params.get("image", "")
+                        print(f"[Pipeline] image_b64 type: {type(image_b64)}, len: {len(str(image_b64))}")
+                        if image_b64:
+                            # 调用 YOLO 模型检测
+                            from .model import ModelService
+                            model_service = ModelService(self.db)
+                            # 解码 base64 图片
+                            import base64
+                            import cv2
+                            import numpy as np
+                            # 确保 image_b64 是字符串
+                            if not isinstance(image_b64, str):
+                                print(f"[Pipeline] image_b64 is not string, converting...")
+                                image_b64 = str(image_b64)
+                            if image_b64.startswith("data:"):
+                                image_b64 = image_b64.split(",")[1]
+                            nparr = np.frombuffer(base64.b64decode(image_b64), np.uint8)
+                            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                            print(f"[Pipeline] img is None: {img is None}, shape: {img.shape if img is not None else 'None'}")
+                            if img is not None and img.size > 0:
+                                # 根据 operation_id 作为 model_id 来调用 YOLO 模型
+                                from .model import Model
+                                model = self.db.query(Model).filter(Model.id == operation_id).first()
+                                if model and model.status == 'completed':
+                                    # 用选择的模型检测
+                                    annotated_img, dets = model_service.test_model_image(
+                                        model_id=operation_id,
+                                        image=img,
+                                        conf_thres=0.5,
+                                        iou_thres=0.7,
+                                        max_det=300,
+                                        agnostic_nms=False,
+                                        imgsz=640
+                                    )
+                                    # 编码结果图
+                                    _, buf = cv2.imencode(".jpg", annotated_img)
+                                    result_img_b64 = base64.b64encode(buf).decode()
+                                    result = {
+                                        "side": dets[0]["class"] if dets else "无检测",
+                                        "confidence": dets[0]["confidence"] if dets else 0,
+                                        "image": result_img_b64
+                                    }
+                                    results[node_id] = NodeResult(
+                                        node_type=NodeType.OPERATION,
+                                        operation_id=operation_id,
+                                        operation_name=f"YOLO模型-{model.name}",
+                                        result=result
+                                    )
+                                    print(f"[Pipeline] YOLO detection success: {len(dets)} objects, model: {model.name}")
+                                    return
+                                else:
+                                    print(f"[Pipeline] Model {operation_id} not found or not completed")
+                    except Exception as e:
+                        print(f"YOLO model detection failed: {e}")
+                        import traceback
+                        traceback.print_exc()
+                    
                     # 记录错误但继续执行
                     print(f"Warning: Operation {operation_id} not found for node {node_id}")
                     results[node_id] = NodeResult(

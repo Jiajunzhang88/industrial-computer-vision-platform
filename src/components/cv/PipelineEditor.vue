@@ -172,17 +172,16 @@
                         <!-- 操作节点特有属性 -->
                         <template v-if="selectedNode.type === NodeType.OPERATION">
                           <div class="col-12">
-                            <q-select v-model="selectedNode.operationId" :options="operations" option-value="id"
-                              option-label="name" label="选择操作" outlined dense emit-value map-options use-input
-                              input-debounce="300" @filter="filterOperations"
-                              @update:model-value="handleOperationChange">
+                            <q-select v-model="selectedNode.operationId" :options="models" option-value="id"
+                              option-label="name" label="选择 YOLO 模型" outlined dense emit-value map-options use-input
+                              input-debounce="300" @update:model-value="handleOperationChange">
                               <template v-slot:prepend>
-                                <q-icon name="code" />
+                                <q-icon name="smart_toy" />
                               </template>
                               <template v-slot:no-option>
                                 <q-item>
                                   <q-item-section class="text-grey">
-                                    没有找到匹配的操作
+                                    没有找到已训练的模型，请先训练模型
                                   </q-item-section>
                                 </q-item>
                               </template>
@@ -190,7 +189,7 @@
                                 <q-item v-bind="scope.itemProps">
                                   <q-item-section>
                                     <q-item-label>{{ scope.opt.name }}</q-item-label>
-                                    <q-item-label caption>{{ scope.opt.description || '无描述' }}</q-item-label>
+                                    <q-item-label caption>{{ scope.opt.architecture }} · {{ scope.opt.status }}</q-item-label>
                                   </q-item-section>
                                 </q-item>
                               </template>
@@ -342,6 +341,7 @@ import { useQuasar } from 'quasar'
 import { Pipeline, NodeType, EdgeType, NodeConfig, EdgeConfig } from '@/services/pipeline'
 import { ParamType } from '@/services/cv_operation'
 import { cvOperationService } from '@/services/cv_operation'
+import { modelService } from '@/services/model'
 import ParameterInput from './ParameterInput.vue'
 import PipelineTestPanel from './PipelineTestPanel.vue'
 import LogicFlow from '@logicflow/core'
@@ -383,6 +383,7 @@ const emit = defineEmits<{
 const lf = ref<LogicFlow | null>(null)
 const showTestPanel = ref(false)
 const operations = ref<any[]>([])
+const models = ref<any[]>([])
 const selectedNode = ref<NodeConfig | null>(null)
 const selectedEdge = ref<any>(null)
 const canUndo = ref(false)
@@ -626,16 +627,19 @@ const getTypeColor = (type: ParamType) => {
   return colorMap[type] || 'grey'
 }
 
-// 加载操作列表
+// 加载操作列表和模型列表
 const loadOperations = async () => {
   try {
     operations.value = await cvOperationService.getOperations()
   } catch (error) {
     console.error('加载操作列表失败:', error)
-    $q.notify({
-      type: 'negative',
-      message: '加载操作列表失败'
-    })
+  }
+  try {
+    const allModels = await modelService.getModels()
+    // 只显示已训练完成的模型
+    models.value = allModels.filter(m => m.status === 'completed')
+  } catch (error) {
+    console.error('加载模型列表失败:', error)
   }
 }
 

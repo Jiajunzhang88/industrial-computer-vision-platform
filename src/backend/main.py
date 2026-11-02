@@ -119,21 +119,34 @@ def pipeline_worker():
     import cv2
     import base64 as b64mod
     import requests
+    import numpy as np
+    print("[Pipeline] worker started")
     while True:
         time.sleep(1)
         if not pipeline_state["running"]:
             continue
         try:
+            print("[Pipeline] tick")
             db = SessionLocal()
             service = ModelService(db)
             # 1. 从摄像头抓拍
-            snap = camera_service.get_frame(0)
-            if snap is None:
+            resp = requests.get('http://127.0.0.1:8000/api/cameras/0/snapshot?return_json=true', timeout=10)
+            snap_data = resp.json()
+            img_b64 = snap_data.get('image_base64') or snap_data.get('frame') or snap_data.get('image')
+            if not img_b64:
+                print("[Pipeline] no image data")
                 continue
-            img = snap if isinstance(snap, np.ndarray) else None
+            # 解码 base64 成 ndarray
+            if img_b64.startswith('data:'):
+                img_b64 = img_b64.split(',')[1]
+            nparr = np.frombuffer(b64mod.b64decode(img_b64), np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             if img is None:
+                print("[Pipeline] decode failed")
                 continue
+            print(f"[Pipeline] img shape: {img.shape}")
             # 2. 用 YOLO 模型检测
+            print("[Pipeline] running YOLO...")
             annotated_img, dets = service.test_model_image(
                 model_id=pipeline_state["model_id"],
                 image=img,
@@ -143,6 +156,7 @@ def pipeline_worker():
                 agnostic_nms=False,
                 imgsz=640
             )
+            print(f"[Pipeline] detected {len(dets)} objects")
             # 3. 去重：每个物体只保留置信度最高的
             dets_sorted = sorted(dets, key=lambda x: x["confidence"], reverse=True)
             kept = []
@@ -165,11 +179,11 @@ def pipeline_worker():
                     kept.append(d)
             # 4. 编码结果图
             _, buf = cv2.imencode(".jpg", annotated_img)
-            img_b64 = b64mod.b64encode(buf).decode()
+            img_b64_result = b64mod.b64encode(buf).decode()
             result = {
                 "timestamp": time.strftime("%H:%M:%S"),
                 "detections": kept,
-                "image": f"data:image/jpeg;base64,{img_b64}",
+                "image": f"data:image/jpeg;base64,{img_b64_result}",
             }
             with pipeline_lock:
                 pipeline_state["latest"] = result

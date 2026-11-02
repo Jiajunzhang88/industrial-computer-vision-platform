@@ -73,20 +73,30 @@
                     </template>
                     
                     <template v-else-if="param.type === ParamType.IMAGE">
-                      <q-file
-                        v-model="inputValues[param.name]"
-                        outlined
-                        dense
-                        accept="image/*"
-                        :rules="[val => !param.required || !!val || '必填项']"
-                      >
-                        <template v-slot:prepend>
-                          <q-icon name="attach_file" />
-                        </template>
-                        <template v-slot:append v-if="inputValues[param.name]">
-                          <q-icon name="close" class="cursor-pointer" @click.stop="inputValues[param.name] = null" />
-                        </template>
-                      </q-file>
+                      <div class="row q-col-gutter-xs">
+                        <q-file
+                          v-model="inputValues[param.name]"
+                          outlined
+                          dense
+                          accept="image/*"
+                          class="col"
+                          :rules="[val => !param.required || !!val || '必填项']"
+                        >
+                          <template v-slot:prepend>
+                            <q-icon name="attach_file" />
+                          </template>
+                          <template v-slot:append v-if="inputValues[param.name]">
+                            <q-icon name="close" class="cursor-pointer" @click.stop="inputValues[param.name] = null" />
+                          </template>
+                        </q-file>
+                        <q-btn
+                          color="amber"
+                          icon="camera_alt"
+                          label="摄像头抓拍"
+                          dense
+                          @click="snapFromCamera(param.name)"
+                        />
+                      </div>
                       <q-img
                         v-if="inputValues[param.name]"
                         :src="getImagePreview(inputValues[param.name])"
@@ -279,8 +289,34 @@ const getLogClass = (type: string) => {
 }
 
 // 获取图片预览URL
-const getImagePreview = (file: File) => {
-  return URL.createObjectURL(file)
+const getImagePreview = (value: any) => {
+  if (typeof value === 'string') {
+    // 已经是 base64 字符串
+    if (value.startsWith('data:image/')) {
+      return value
+    }
+    // 纯 base64 数据，加前缀
+    return `data:image/jpeg;base64,${value}`
+  }
+  // File 对象
+  return URL.createObjectURL(value)
+}
+
+// 从摄像头抓拍
+const snapFromCamera = async (paramName: string) => {
+  try {
+    const resp = await fetch('/api/cameras/0/snapshot?return_json=true')
+    const data = await resp.json()
+    const imgB64 = data.image_base64 || data.frame || data.image
+    if (imgB64) {
+      inputValues.value[paramName] = imgB64.startsWith('data:') ? imgB64 : `data:image/jpeg;base64,${imgB64}`
+      $q.notify({ type: 'positive', message: '摄像头抓拍成功' })
+    } else {
+      $q.notify({ type: 'negative', message: '抓拍失败：未获取到图片' })
+    }
+  } catch (e: any) {
+    $q.notify({ type: 'negative', message: `抓拍失败: ${e.message}` })
+  }
 }
 
 // 处理文件上传
