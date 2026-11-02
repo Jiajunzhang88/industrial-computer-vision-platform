@@ -1,0 +1,6 @@
+﻿== detect ==
+200 [{"device_id":0,"name":"Camera 0","type":"camera","model":"USB Camera","status":"online","config":{"resolution":"640x480","fps":30,"format":"MJPEG","source":"device:0"}}]
+== stop 0 -> 200 {"status":"success","message":"没有正在处理的流可停止"}
+== stop camera_0 -> 200 {"status":"success","message":"没有正在处理的流可停止"}
+== stop 1 -> 200 {"status":"success","message":"没有正在处理的流可停止"}
+== stop Camera 0 -> None URL can't contain control characters. '/api/cameras/Camera 0/stop-stream' (found at least ' ')

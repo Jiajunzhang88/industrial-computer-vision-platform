@@ -13,7 +13,7 @@ export default {
     warning: '警告',
     info: '信息',
     menu: '菜单',
-    systemName: '工业铸字识别系统'
+    systemName: 'Industral Monitoring System',
   },
   settings: {
     system: {

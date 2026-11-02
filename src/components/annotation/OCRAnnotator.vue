@@ -17,7 +17,7 @@
 
       <!-- 矩形标注按钮 -->
       <q-btn round flat dense :color="isDrawing ? 'negative' : 'white'"
-        icon="rectangle" @click="activateDrawingTool()">
+        icon="crop_free" @click="activateDrawingTool()">
         <q-tooltip>{{ t('annotator.tools.character') }}</q-tooltip>
       </q-btn>
 
@@ -61,7 +61,7 @@
           maxlength="1"
           :rules="[val => val.length === 1 || t('annotator.ocr.singleCharRequired')]">
           <template v-slot:append>
-            <q-btn round flat dense icon="edit" size="xs" @click="showCharacterSelector = true">
+            <q-btn round flat dense icon="edit" size="xs" @click="openCharacterSelector()">
               <q-tooltip>{{ t('annotator.ocr.selectChar') }}</q-tooltip>
             </q-btn>
           </template>
@@ -87,7 +87,7 @@
             clickable
             outline
             color="white"
-            @click="showCharacterSelector = true">
+            @click="openCharacterSelector()">
             <q-icon name="add" size="xs" class="q-mr-xs" />
             {{ t('annotator.ocr.more') }}
           </q-chip>
@@ -197,7 +197,7 @@
           <q-btn flat :label="t('common.confirm')" color="primary" 
             v-close-popup 
             :disable="!currentCharacter || currentCharacter.length !== 1" 
-            @click="addToRecentCharacters(currentCharacter)" />
+            @click="applyCharacterSelection()" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -238,6 +238,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   (e: 'update:annotations', annotations: any[]): void
   (e: 'annotationStatusChange', status: 'completed' | 'incomplete'): void
+  (e: 'navigateImage', direction: -1 | 1): void
 }>()
 
 // Component refs
@@ -249,9 +250,25 @@ const annotations = ref<any[]>([])
 const lastSavedAnnotations = ref<string>('')
 
 // Character annotation
-const currentCharacter = ref<string>('A')
+// 注意：必须用 IIFE 立即执行得到普通字符串值，不能用 ref(() => ...)（那会变成只读引用，赋值无效）
+const currentCharacter = ref<string>((() => {
+  try {
+    return localStorage.getItem('ocr_annotator_last_char') || 'A'
+  } catch {
+    return 'A'
+  }
+})())
 const recentCharacters = ref<string[]>(['A', 'B', 'C', '1', '2', '3'])
 const showCharacterSelector = ref(false)
+
+// 记住上次选择的标签字符，切换图片时保持一致
+watch(currentCharacter, (val) => {
+  try {
+    if (val) localStorage.setItem('ocr_annotator_last_char', val)
+  } catch (e) {
+    // localStorage 不可用时忽略，仅当前组件内生效
+  }
+})
 
 // Common character sets
 const commonCharacterSets = {
@@ -295,13 +312,53 @@ const selectCharacter = (char: string) => {
   addToRecentCharacters(char)
 }
 
+// 打开字符选择器：若已选中标注框，预置为框当前的标签
+const openCharacterSelector = () => {
+  if (selectedAnnotation.value) {
+    const label = getAnnotationLabel(selectedAnnotation.value)
+    if (label && label !== '?') {
+      currentCharacter.value = label
+    }
+  }
+  showCharacterSelector.value = true
+}
+
+// 确认字符：若有选中的标注框，把它的标签更新为当前字符并触发自动保存
+const applyCharacterSelection = () => {
+  if (selectedAnnotation.value) {
+    const ann = selectedAnnotation.value
+    // 兼容 bodies/body 两种结构
+    const bodies = ann.bodies && ann.bodies.length > 0 ? ann.bodies : (ann.body || [])
+    if (bodies.length > 0) {
+      bodies[0].value = currentCharacter.value
+    } else {
+      ann.body = [{ type: 'TextualBody', purpose: 'tagging', value: currentCharacter.value }]
+      ann.bodies = ann.bodies || []
+    }
+    // 更新 Annotorious 内部与标注数组（触发自动保存）
+    if (anno) {
+      anno.updateAnnotation(ann)
+    }
+    const index = annotations.value.findIndex(a => a.id === ann.id)
+    if (index !== -1) {
+      annotations.value[index] = { ...ann }
+    }
+  }
+  addToRecentCharacters(currentCharacter.value)
+  showCharacterSelector.value = false
+}
+
 // Format annotation bounds for display
 const formatBounds = (annotation: any) => {
-  if (!annotation?.selector?.geometry) return ''
+  const geometry = annotation?.selector?.geometry || annotation?.target?.selector?.geometry
+  if (!geometry) return ''
   
-  const g = annotation.selector.geometry
+  const g = geometry
   if (g.x && g.y && g.width && g.height) {
     return `x:${Math.round(g.x)}, y:${Math.round(g.y)}, w:${Math.round(g.width)}, h:${Math.round(g.height)}`
+  }
+  if (g.bounds && g.bounds.minX !== undefined) {
+    return `x:${Math.round(g.bounds.minX)}, y:${Math.round(g.bounds.minY)}, w:${Math.round(g.bounds.maxX - g.bounds.minX)}, h:${Math.round(g.bounds.maxY - g.bounds.minY)}`
   }
   return ''
 }
@@ -310,9 +367,14 @@ const formatBounds = (annotation: any) => {
 const getAnnotationLabel = (annotation: any) => {
   if (!annotation) return '?'
   
-  // Check various places where the label might be
-  if (annotation.body && annotation.body.length > 0) {
-    return annotation.body[0].value || '?'
+  // Annotorious 使用 bodies（复数）作为标准字段，W3C 兼容格式使用 body
+  // 重新加载后 body 会被转换/忽略，需要两种都兼容
+  const bodies = annotation.bodies && annotation.bodies.length > 0
+    ? annotation.bodies
+    : (annotation.body || [])
+  
+  if (bodies.length > 0) {
+    return bodies[0].value || '?'
   }
   
   // Try to get from the target properties if present
@@ -336,6 +398,8 @@ onMounted(() => {
     }
   }
   
+  window.addEventListener('keydown', onViewerKeydown)
+  
   nextTick(() => {
     initializeViewer()
   })
@@ -343,6 +407,8 @@ onMounted(() => {
 
 // Clean up on unmount
 onUnmounted(() => {
+  window.removeEventListener('keydown', onViewerKeydown)
+
   if (anno) {
     anno.destroy()
     anno = null
@@ -353,6 +419,18 @@ onUnmounted(() => {
     viewer = null
   }
 })
+
+// 键盘 ← → 切换图片：仅在未选中标注框、非画框模式、非输入框聚焦时生效
+const onViewerKeydown = (e: KeyboardEvent) => {
+  const target = e.target as HTMLElement | null
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+    return
+  }
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  if (selectedAnnotation.value || isDrawing.value) return
+  e.preventDefault()
+  emit('navigateImage', e.key === 'ArrowLeft' ? -1 : 1)
+}
 
 // Initialize the OpenSeadragon viewer and Annotorious
 const initializeViewer = () => {
@@ -482,8 +560,12 @@ const setupAnnotationHandlers = () => {
       emit('update:annotations', annotations.value)
     }
     
-    // Make sure the annotation has a character label
-    if (!annotation.body || !annotation.body.length || !annotation.body[0].value) {
+    // Make sure the annotation has a character label (兼容 bodies/body 两种结构)
+    const bodies = annotation.bodies && annotation.bodies.length > 0
+      ? annotation.bodies
+      : (annotation.body || [])
+    const hasLabel = bodies.length > 0 && !!bodies[0].value
+    if (!hasLabel) {
       annotation.body = [{
         type: 'TextualBody',
         purpose: 'tagging',
@@ -570,6 +652,9 @@ const loadAnnotations = async () => {
       } else {
         emit('annotationStatusChange', 'incomplete')
       }
+    } else {
+      // 无标注记录：初始化 lastSaved 为空数组，否则第一张图的自动保存会被跳过
+      lastSavedAnnotations.value = JSON.stringify([])
     }
   } catch (error) {
     console.error('Error loading annotations:', error)

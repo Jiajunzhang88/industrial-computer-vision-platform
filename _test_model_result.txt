@@ -1,0 +1,2 @@
+[obverse] success detections=[('obverse', 0.736)]
+[reverse] success detections=[]

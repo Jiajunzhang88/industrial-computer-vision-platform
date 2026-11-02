@@ -13,7 +13,7 @@ export default {
     warning: 'Warning',
     info: 'Info',
     menu: 'Menu',
-    systemName: 'Industrial OCR System'
+    systemName: 'Industral Monitoring System',
   },
   settings: {
     system: {

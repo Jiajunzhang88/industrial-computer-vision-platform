@@ -1,0 +1,1 @@
+﻿{"id":3,"name":"硬币正反面识别模型V2","architecture":"yolo_v8","dataset_id":3,"status":"training","parameters":{"epochs":30,"batch_size":16,"img_size":640,"conf_thres":0.25,"iou_thres":0.45},"metrics":null,"created_at":"2026-10-31T09:12:35.547792","updated_at":"2026-10-31T09:12:35.624277","file_path":null}

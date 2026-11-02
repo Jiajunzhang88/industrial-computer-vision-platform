@@ -94,13 +94,15 @@ class CVOperationService:
     def create_operation(self, name: str, code: str, 
                         input_params: List[ParamConfig] = None,
                         output_params: List[ParamConfig] = None,
-                        description: str = None) -> CVOperation:
+                        description: str = None,
+                        output_type: str = 'image') -> CVOperation:
         """创建新的CV操作"""
         try:
             operation = CVOperation(
                 name=name,
                 description=description,
                 code=code,
+                output_type=output_type,
                 input_params=input_params or [],
                 output_params=output_params or [],
                 created_at=datetime.utcnow(),
@@ -117,7 +119,8 @@ class CVOperationService:
     def update_operation(self, operation_id: int, name: str = None, 
                         code: str = None, description: str = None,
                         input_params: List[ParamConfig] = None,
-                        output_params: List[ParamConfig] = None) -> CVOperation:
+                        output_params: List[ParamConfig] = None,
+                        output_type: str = None) -> CVOperation:
         """更新CV操作"""
         operation = self.get_operation(operation_id)
         if not operation:
@@ -129,6 +132,8 @@ class CVOperationService:
             operation.code = code
         if description is not None:
             operation.description = description
+        if output_type is not None:
+            operation.output_type = output_type
         if input_params is not None:
             operation.input_params = input_params
         if output_params is not None:

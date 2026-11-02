@@ -47,7 +47,11 @@ class AnnotationService:
         dataset = self.db.query(Dataset).filter(Dataset.id == dataset_id).first()
         if not dataset:
             raise HTTPException(status_code=404, detail="Dataset not found")
-        return dataset.images
+        # 只返回未删除的图片
+        return self.db.query(Image).filter(
+            Image.dataset_id == dataset_id,
+            Image.is_deleted == False  # noqa: E712
+        ).order_by(Image.id).all()
 
     def create_image(self, dataset_id: int, filename: str, url: str) -> Image:
         """创建新图片"""
@@ -73,29 +77,65 @@ class AnnotationService:
             raise e
 
     def delete_image(self, image_id: int):
-        """删除图片"""
+        """软删除图片：移入垃圾箱（保留文件和标注记录，可恢复）"""
         image = self.db.query(Image).filter(Image.id == image_id).first()
         if not image:
             raise HTTPException(status_code=404, detail="Image not found")
         
         try:
-            # 从 url 中获取文件路径
-            # url 格式: /uploads/{dataset_id}/{filename}
-            file_path = os.path.join(".", image.url.lstrip('/'))
-            
-            # 删除物理文件
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            
-            # 删除数据库记录
-            self.db.delete(image)
+            image.is_deleted = True
+            image.deleted_at = datetime.utcnow()
             self.db.commit()
-            
         except Exception as e:
             self.db.rollback()
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to delete image: {str(e)}"
+            )
+
+    def get_trash_images(self) -> List[Image]:
+        """获取垃圾箱中的图片"""
+        return self.db.query(Image).filter(
+            Image.is_deleted == True  # noqa: E712
+        ).order_by(Image.deleted_at.desc()).all()
+
+    def restore_image(self, image_id: int) -> Image:
+        """从垃圾箱恢复图片"""
+        image = self.db.query(Image).filter(Image.id == image_id).first()
+        if not image:
+            raise HTTPException(status_code=404, detail="Image not found")
+        if not image.is_deleted:
+            raise HTTPException(status_code=400, detail="Image is not in trash")
+        try:
+            image.is_deleted = False
+            image.deleted_at = None
+            self.db.commit()
+            self.db.refresh(image)
+            return image
+        except Exception as e:
+            self.db.rollback()
+            raise e
+
+    def purge_image(self, image_id: int):
+        """永久删除图片（物理文件 + 数据库记录 + 标注）"""
+        image = self.db.query(Image).filter(Image.id == image_id).first()
+        if not image:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        try:
+            # 删除物理文件
+            file_path = os.path.join(".", image.url.lstrip('/'))
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            
+            # 删除数据库记录（标注随级联删除）
+            self.db.delete(image)
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to purge image: {str(e)}"
             )
 
     def get_image_annotation(self, image_id: int) -> Optional[dict]:

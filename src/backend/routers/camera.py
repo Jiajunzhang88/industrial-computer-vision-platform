@@ -451,4 +451,50 @@ async def process_image(
         raise
     except Exception as e:
         logger.exception(f"处理图像错误: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"处理图像错误: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"处理图像错误: {str(e)}")
+
+
+@router.post("/force-release")
+def force_release_camera():
+    """
+    强制释放摄像头：先停止本系统所有相机流，
+    再结束常见占用摄像头的应用进程（Windows相机、Teams、Zoom、OBS等）。
+    调用前需经用户确认。
+    """
+    import subprocess
+
+    # 1. 释放本系统已打开的摄像头
+    try:
+        camera_service.close_all_cameras()
+        logger.info("已停止本系统所有摄像头流")
+    except Exception as e:
+        logger.error(f"停止本系统摄像头失败: {str(e)}")
+
+    # 2. 结束常见占用摄像头的应用进程
+    targets = [
+        "WindowsCamera",   # Windows 相机应用
+        "ms-teams",        # Microsoft Teams
+        "Teams",           # Teams (standalone)
+        "zoom",            # Zoom
+        "obs64",           # OBS Studio 64位
+        "obs32",           # OBS Studio 32位
+    ]
+    killed = []
+    for name in targets:
+        try:
+            r = subprocess.run(
+                ["taskkill", "/IM", f"{name}.exe", "/F", "/T"],
+                capture_output=True, text=True, timeout=15
+            )
+            if r.returncode == 0:
+                killed.append(name)
+                logger.info(f"已结束摄像头占用进程: {name}")
+        except Exception as e:
+            logger.warning(f"结束进程 {name} 失败: {str(e)}")
+
+    if killed:
+        logger.info(f"强制释放完成，结束进程: {killed}")
+    else:
+        logger.info("强制释放完成，未发现占用摄像头的常见进程")
+
+    return {"success": True, "killed": killed}

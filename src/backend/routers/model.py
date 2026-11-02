@@ -111,6 +111,11 @@ def start_training(model_id: int, db: Session = Depends(get_db)):
     service = ModelService(db)
     return service.start_training(model_id)
 
+@router.post("/{model_id}/stop", response_model=ModelResponse)
+def stop_training(model_id: int, db: Session = Depends(get_db)):
+    service = ModelService(db)
+    return service.stop_training(model_id)
+
 @router.get("/{model_id}/export")
 def export_model(model_id: int, db: Session = Depends(get_db)):
     service = ModelService(db)

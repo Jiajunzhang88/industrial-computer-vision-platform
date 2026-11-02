@@ -1,0 +1,3 @@
+[obverse] side=正面 density=0.1212 ERROR_logs=0
+[reverse] side=反面 density=0.0113 ERROR_logs=0
+DONE

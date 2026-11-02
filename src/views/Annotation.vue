@@ -50,6 +50,19 @@
                     </q-item-section>
                   </q-item>
                 </q-list>
+
+                <!-- 垃圾箱入口 -->
+                <q-item clickable v-ripple class="q-mt-xs trash-entry" @click="openTrashDialog">
+                  <q-item-section avatar>
+                    <q-icon name="delete_outline" color="grey-6" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>垃圾箱</q-item-label>
+                    <q-item-label caption class="dataset-info">
+                      <span>{{ trashImages.length }} 张图片</span>
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
               </q-scroll-area>
             </q-card-section>
           </q-card>
@@ -69,6 +82,11 @@
                     <q-btn v-if="selectedImages.length > 0" flat round icon="delete" color="negative"
                       @click="confirmDeleteSelected">
                       <q-tooltip>{{ t('annotation.actions.deleteSelected') }}</q-tooltip>
+                    </q-btn>
+
+                    <!-- 摄像头拍摄按钮 -->
+                    <q-btn flat round icon="photo_camera" @click="openCameraDialog">
+                      <q-tooltip>摄像头拍摄并上传</q-tooltip>
                     </q-btn>
 
                     <!-- 上传图片按钮 -->
@@ -165,6 +183,7 @@
                       :imageId="currentImage.id"
                       :currentImage="currentImage"
                       @annotationStatusChange="handleAnnotationStatus"
+                      @navigateImage="handleNavigateImage"
                       :key="`ocr-${currentImage.id}`"
                     />
                     <TextRegionAnnotator
@@ -252,6 +271,31 @@
       </q-card>
     </q-dialog>
 
+    <!-- 摄像头拍摄对话框 -->
+    <q-dialog v-model="cameraDialog" persistent>
+      <q-card style="min-width: 480px; max-width: 92vw">
+        <q-card-section class="row items-center">
+          <div class="text-h6">摄像头拍摄</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup @click="stopCamera" />
+        </q-card-section>
+
+        <q-card-section class="column items-center">
+          <video ref="cameraVideo" autoplay playsinline class="camera-preview"></video>
+          <div v-if="cameraError" class="text-negative q-mt-sm">{{ cameraError }}</div>
+          <div v-if="!cameraError && !cameraReady" class="text-grey-7 q-mt-sm">
+            正在启动摄像头…
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="center" class="q-pb-md">
+          <q-btn outline icon="close" label="取消" color="primary" v-close-popup @click="stopCamera" />
+          <q-btn unelevated icon="photo_camera" label="拍照并上传" color="primary"
+            @click="takePhoto" :loading="capturing" :disable="!cameraReady" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- 创建数据集对话框 -->
     <q-dialog v-model="createDatasetDialog">
       <q-card style="min-width: 350px">
@@ -320,6 +364,49 @@
       </q-card>
     </q-dialog>
 
+    <!-- 垃圾箱对话框 -->
+    <q-dialog v-model="trashDialog" style="max-width: 90vw">
+      <q-card style="min-width: 680px; max-width: 90vw">
+        <q-card-section class="row items-center">
+          <div class="text-h6">垃圾箱</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section v-if="trashImages.length === 0" class="flex flex-center q-pa-xl text-grey-6">
+          <div class="text-center">
+            <q-icon name="delete_outline" size="48px" color="grey-5" />
+            <div class="q-mt-sm">垃圾箱为空</div>
+            <div class="text-caption q-mt-xs">删除的图片会先到这里，可随时恢复</div>
+          </div>
+        </q-card-section>
+
+        <q-card-section v-else>
+          <q-scroll-area style="height: 55vh">
+            <div class="row q-col-gutter-sm">
+              <div v-for="img in trashImages" :key="img.id" class="col-auto">
+                <div class="trash-image-container">
+                  <q-img :src="img.url" :ratio="1" class="image-thumbnail" style="width: 120px" />
+                  <div class="text-caption q-mt-xs" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ img.filename }}
+                  </div>
+                  <div class="text-caption text-grey-7" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ img.datasetName }}
+                  </div>
+                  <div class="row q-mt-xs">
+                    <q-btn dense flat size="sm" color="primary" icon="restore" label="恢复"
+                      @click="restoreFromTrash(img)" :loading="restoringId === img.id" />
+                    <q-btn dense flat size="sm" color="negative" icon="delete_forever" label="永久删除"
+                      @click="purgeFromTrash(img)" :loading="purgingId === img.id" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </q-scroll-area>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
     <generate-data 
       v-if="currentDataset"
       v-model="showGenerateDataDialog" 
@@ -331,10 +418,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useQuasar } from 'quasar'
 import { AnnotationService } from '../services/annotation'
-import type { Dataset, Image } from '../services/annotation'
+import type { Dataset, Image, TrashImage } from '../services/annotation'
 import { DatasetType } from '../services/annotation'
 import TextRegionAnnotator from '../components/annotation/TextRegionAnnotator.vue'
 import GenerateData from '../components/annotation/GenerateData.vue'
@@ -376,6 +463,14 @@ const showGenerateDataDialog = ref(false)
 
 // 视图模式
 const viewMode = ref<'grid' | 'carousel'>('grid')
+
+// 摄像头拍摄
+const cameraDialog = ref(false)
+const cameraVideo = ref<HTMLVideoElement | null>(null)
+const cameraStream = ref<MediaStream | null>(null)
+const cameraError = ref('')
+const cameraReady = ref(false)
+const capturing = ref(false)
 
 // 缩略图导航
 const thumbnailScroll = ref<any>(null)
@@ -566,6 +661,120 @@ const handleUploadImages = async () => {
   }
 }
 
+// 摄像头拍摄
+const startCameraStream = async () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    cameraError.value = '当前浏览器不支持摄像头访问，请使用 Chrome/Edge'
+    return false
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: false
+  })
+  cameraStream.value = stream
+  if (cameraVideo.value) {
+    cameraVideo.value.srcObject = stream
+  }
+  cameraReady.value = true
+  return true
+}
+
+const isDeviceInUseError = (error: any) => {
+  const name = error?.name || ''
+  const msg = error?.message || ''
+  return name.includes('NotReadableError') ||
+    name.includes('DeviceInUse') ||
+    /in use/i.test(msg) ||
+    /占用/i.test(msg) ||
+    /busy/i.test(msg)
+}
+
+const openCameraDialog = async () => {
+  if (!currentDataset.value) {
+    $q.notify({ type: 'warning', message: '请先选择一个数据集', position: 'top' })
+    return
+  }
+  cameraError.value = ''
+  cameraReady.value = false
+  cameraDialog.value = true
+  await nextTick()
+  try {
+    await startCameraStream()
+  } catch (error) {
+    console.error('启动摄像头失败:', error)
+    if (isDeviceInUseError(error)) {
+      cameraError.value = '摄像头被其他程序占用'
+      $q.dialog({
+        title: '摄像头被占用',
+        message: '检测到摄像头正被其他程序使用，是否强制切换过来？\n（将自动关闭占用摄像头的应用：Windows 相机、Teams、Zoom、OBS 等）',
+        persistent: true,
+        ok: { label: '强制切换', color: 'negative' },
+        cancel: { label: '取消', flat: true }
+      }).onOk(async () => {
+        try {
+          await annotationService.forceReleaseCamera()
+          cameraError.value = ''
+          cameraReady.value = false
+          await startCameraStream()
+        } catch (e) {
+          console.error('强制切换摄像头失败:', e)
+          cameraError.value = '强制切换失败：' + ((e as any)?.message || '请手动关闭占用摄像头的程序')
+        }
+      })
+    } else {
+      cameraError.value = '无法访问摄像头：' + ((error as any)?.message || '请检查摄像头是否被占用')
+    }
+  }
+}
+
+const stopCamera = () => {
+  if (cameraStream.value) {
+    cameraStream.value.getTracks().forEach(track => track.stop())
+    cameraStream.value = null
+  }
+  if (cameraVideo.value) {
+    cameraVideo.value.srcObject = null
+  }
+  cameraReady.value = false
+}
+
+const takePhoto = async () => {
+  if (!cameraVideo.value || !cameraReady.value || !currentDataset.value) return
+  capturing.value = true
+  try {
+    const video = cameraVideo.value
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth || 640
+    canvas.height = video.videoHeight || 480
+    canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const blob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('拍照失败'))), 'image/jpeg', 0.92)
+    })
+    const file = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' })
+    const newImages = await annotationService.uploadImages(currentDataset.value.id, [file])
+    datasetImages.value.push(...newImages)
+
+    const index = datasets.value.findIndex(d => d.id === currentDataset.value?.id)
+    if (index !== -1) {
+      datasets.value[index] = {
+        ...datasets.value[index],
+        imageCount: datasets.value[index].imageCount + newImages.length
+      }
+    }
+
+    $q.notify({ type: 'positive', message: '拍照并上传成功', position: 'top' })
+  } catch (error) {
+    console.error('拍照上传失败:', error)
+    $q.notify({ type: 'negative', message: '拍照上传失败，请重试', position: 'top' })
+  } finally {
+    capturing.value = false
+  }
+}
+
+onBeforeUnmount(() => {
+  stopCamera()
+})
+
 // 标注相关
 const handleAnnotationsUpdate = (annotations: any[]) => {
   console.log('标注已更新:', annotations)
@@ -618,40 +827,56 @@ const selectImage = async (image: Image) => {
   })
 }
 
-// 删除图片
-const deleteImage = async (image: Image) => {
-  try {
-    await annotationService.deleteImage(image.id)
-    datasetImages.value = datasetImages.value.filter(img => img.id !== image.id)
-
-    if (currentImage.value?.id === image.id) {
-      currentImage.value = null
+// 删除图片（软删除，移入垃圾箱）
+const deleteImage = (image: Image) => {
+  $q.dialog({
+    title: '删除图片',
+    message: `确定删除「${image.filename}」吗？\n删除后将移入垃圾箱，可随时恢复。`,
+    persistent: true,
+    ok: {
+      label: '删除',
+      color: 'negative',
+      flat: true
+    },
+    cancel: {
+      label: '取消',
+      flat: true
     }
+  }).onOk(async () => {
+    try {
+      await annotationService.deleteImage(image.id)
+      datasetImages.value = datasetImages.value.filter(img => img.id !== image.id)
+      loadTrashImages()
 
-    // 更新数据集图片数量
-    if (currentDataset.value) {
-      const index = datasets.value.findIndex(d => d.id === currentDataset.value!.id)
-      if (index !== -1) {
-        datasets.value[index] = {
-          ...datasets.value[index],
-          imageCount: datasets.value[index].imageCount - 1
+      if (currentImage.value?.id === image.id) {
+        currentImage.value = null
+      }
+
+      // 更新数据集图片数量
+      if (currentDataset.value) {
+        const index = datasets.value.findIndex(d => d.id === currentDataset.value!.id)
+        if (index !== -1) {
+          datasets.value[index] = {
+            ...datasets.value[index],
+            imageCount: datasets.value[index].imageCount - 1
+          }
         }
       }
-    }
 
-    $q.notify({
-      type: 'positive',
-      message: t('annotation.notifications.deleteImageSuccess'),
-      position: 'top'
-    })
-  } catch (error) {
-    console.error('删除图片失败:', error)
-    $q.notify({
-      type: 'negative',
-      message: t('annotation.notifications.deleteImageFailed'),
-      position: 'top'
-    })
-  }
+      $q.notify({
+        type: 'positive',
+        message: '已移入垃圾箱',
+        position: 'top'
+      })
+    } catch (error) {
+      console.error('删除图片失败:', error)
+      $q.notify({
+        type: 'negative',
+        message: t('annotation.notifications.deleteImageFailed'),
+        position: 'top'
+      })
+    }
+  })
 }
 
 // 开始标注
@@ -659,6 +884,106 @@ const startAnnotation = async (image: Image) => {
   viewMode.value = 'carousel'
   selectedImages.value = []
   await selectImage(image)
+}
+
+// 键盘 ← → 切换图片（由标注组件在无选中框时触发）
+const handleNavigateImage = (direction: -1 | 1) => {
+  if (!datasetImages.value.length || !currentImage.value) return
+  const idx = currentImageIndex.value + direction
+  if (idx < 0 || idx >= datasetImages.value.length) return
+  selectImage(datasetImages.value[idx])
+}
+
+// --- 垃圾箱 ---
+const trashDialog = ref(false)
+const trashImages = ref<TrashImage[]>([])
+const restoringId = ref<number | null>(null)
+const purgingId = ref<number | null>(null)
+
+const loadTrashImages = async () => {
+  try {
+    trashImages.value = await annotationService.getTrashImages()
+  } catch (error) {
+    console.error('加载垃圾箱失败:', error)
+  }
+}
+
+const openTrashDialog = () => {
+  trashDialog.value = true
+  loadTrashImages()
+}
+
+const restoreFromTrash = async (img: TrashImage) => {
+  restoringId.value = img.id
+  try {
+    await annotationService.restoreImage(img.id)
+    trashImages.value = trashImages.value.filter(i => i.id !== img.id)
+
+    // 若恢复的图片属于当前打开的数据集，刷新图片列表
+    if (currentDataset.value && currentDataset.value.id === img.datasetId) {
+      const images = await annotationService.getDatasetImages(currentDataset.value.id)
+      datasetImages.value = images
+      const index = datasets.value.findIndex(d => d.id === currentDataset.value!.id)
+      if (index !== -1) {
+        datasets.value[index] = {
+          ...datasets.value[index],
+          imageCount: images.length
+        }
+      }
+    }
+
+    $q.notify({
+      type: 'positive',
+      message: `已恢复「${img.filename}」`,
+      position: 'top'
+    })
+  } catch (error) {
+    console.error('恢复图片失败:', error)
+    $q.notify({
+      type: 'negative',
+      message: '恢复图片失败，请重试',
+      position: 'top'
+    })
+  } finally {
+    restoringId.value = null
+  }
+}
+
+const purgeFromTrash = (img: TrashImage) => {
+  $q.dialog({
+    title: '永久删除',
+    message: `确定永久删除「${img.filename}」吗？\n此操作不可恢复，将同时删除文件与标注。`,
+    persistent: true,
+    ok: {
+      label: '永久删除',
+      color: 'negative',
+      flat: true
+    },
+    cancel: {
+      label: '取消',
+      flat: true
+    }
+  }).onOk(async () => {
+    purgingId.value = img.id
+    try {
+      await annotationService.purgeImage(img.id)
+      trashImages.value = trashImages.value.filter(i => i.id !== img.id)
+      $q.notify({
+        type: 'positive',
+        message: '已永久删除',
+        position: 'top'
+      })
+    } catch (error) {
+      console.error('永久删除失败:', error)
+      $q.notify({
+        type: 'negative',
+        message: '永久删除失败，请重试',
+        position: 'top'
+      })
+    } finally {
+      purgingId.value = null
+    }
+  })
 }
 
 // 图片选择
@@ -900,6 +1225,7 @@ const handleDelete = async () => {
     try {
       deleting.value = true
       await Promise.all(selectedImages.value.map(id => annotationService.deleteImage(id)))
+      loadTrashImages()
 
       datasetImages.value = datasetImages.value.filter(img => !selectedImages.value.includes(img.id))
 
@@ -1090,6 +1416,15 @@ watch(() => currentDataset.value, (newDataset) => {
 </script>
 
 <style lang="scss" scoped>
+.camera-preview {
+  width: 100%;
+  max-width: 560px;
+  max-height: 70vh;
+  border-radius: 8px;
+  background: #000;
+  object-fit: contain;
+}
+
 .annotation-page {
   background: var(--dark-page);
   overflow: hidden; // 防止出现垂直滚动条

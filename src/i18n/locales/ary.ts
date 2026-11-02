@@ -13,7 +13,7 @@ export default {
     warning: 'تحذير',
     info: 'معلومات',
     menu: 'القائمة',
-    systemName: 'نظام التعرف البصري الصناعي'
+    systemName: 'Industral Monitoring System',
   },
   settings: {
     system: {

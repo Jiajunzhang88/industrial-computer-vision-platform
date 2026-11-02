@@ -1,6 +1,7 @@
 # Node.js
 node_modules/
 dist/
+env_312
 .env
 .env.local
 .env.*.local

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Body
 from sqlalchemy.orm import Session
 from ..services.annotation import AnnotationService
-from ..models import DatasetType
+from ..models import DatasetType, Dataset
 from ..dependencies import get_db
 from typing import List, Dict, Any
 from datetime import datetime
@@ -42,6 +42,7 @@ class ImageResponse(CamelModel):
     datasetId: int = Field(..., description="所属数据集ID")
     createdAt: datetime = Field(..., description="创建时间")
     isAnnotated: bool = Field(False, description="是否已标注")
+    isDeleted: bool = Field(False, description="是否已删除（垃圾箱）")
 
     class Config:
         json_schema_extra = {
@@ -54,6 +55,16 @@ class ImageResponse(CamelModel):
                 "isAnnotated": False
             }
         }
+
+class TrashImageResponse(CamelModel):
+    id: int = Field(..., description="图片ID")
+    filename: str = Field(..., description="文件名")
+    url: str = Field(..., description="图片URL")
+    datasetId: int = Field(..., description="所属数据集ID")
+    datasetName: str = Field(..., description="所属数据集名称")
+    createdAt: datetime = Field(..., description="创建时间")
+    deletedAt: datetime = Field(..., description="删除时间")
+    isAnnotated: bool = Field(False, description="是否已标注")
 
 # --- 请求模型 ---
 class CreateDatasetRequest(CamelModel):
@@ -245,9 +256,56 @@ async def upload_images(
 
 @router.delete("/images/{image_id}")
 async def delete_image(image_id: int, db: Session = Depends(get_db)):
-    """删除图片"""
+    """删除图片（软删除，移入垃圾箱）"""
     service = AnnotationService(db)
     service.delete_image(image_id)
+    return {"status": "success"}
+
+@router.get("/trash", response_model=List[TrashImageResponse])
+async def get_trash_images(db: Session = Depends(get_db)):
+    """获取垃圾箱中的图片"""
+    service = AnnotationService(db)
+    images = service.get_trash_images()
+    result = []
+    for image in images:
+        dataset = db.query(Dataset).filter(Dataset.id == image.dataset_id).first()
+        result.append(
+            TrashImageResponse(
+                id=image.id,
+                filename=image.filename,
+                url=f"/uploads/{image.dataset_id}/{image.filename}",
+                datasetId=image.dataset_id,
+                datasetName=dataset.name if dataset else "未知数据集",
+                createdAt=image.created_at,
+                deletedAt=image.deleted_at or image.created_at,
+                isAnnotated=image.is_annotated
+            )
+        )
+    return result
+
+@router.post("/images/{image_id}/restore")
+async def restore_image(image_id: int, db: Session = Depends(get_db)):
+    """从垃圾箱恢复图片"""
+    service = AnnotationService(db)
+    image = service.restore_image(image_id)
+    return {
+        "status": "success",
+        "image": ImageResponse(
+            id=image.id,
+            filename=image.filename,
+            url=f"/uploads/{image.dataset_id}/{image.filename}",
+            datasetId=image.dataset_id,
+            createdAt=image.created_at,
+            isAnnotated=image.is_annotated,
+            isDeleted=image.is_deleted
+        )
+    }
+
+@router.delete("/images/{image_id}/purge")
+async def purge_image(image_id: int, db: Session = Depends(get_db)):
+    """从垃圾箱永久删除图片（不可恢复）"""
+    service = AnnotationService(db)
+    service.purge_image(image_id)
     return {"status": "success"}
 
 @router.get("/images/{image_id}/annotation", response_model=AnnotationResponse)

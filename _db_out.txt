@@ -1,0 +1,5 @@
+﻿tables: ['datasets', 'pipelines', 'cv_operations', 'settings', 'devices', 'images', 'models', 'detections', 'alerts', 'annotations']
+cols: ['id', 'name', 'architecture', 'dataset_id', 'status', 'parameters', 'metrics', 'file_path', 'created_at', 'updated_at']
+(1, '1', 'FAILED', None, 1)
+(2, '硬币正反面识别模型', 'TRAINING', 'models\\model_2\\weights\\best.pt', 2)
+(3, '硬币正反面识别模型V2', 'TRAINING', None, 3)

@@ -28,8 +28,8 @@ if platform.system() == "Windows":
 
 # 创建FastAPI应用实例
 app = FastAPI(
-    title="工业铸字识别系统API",
-    description="工业铸字识别系统的后端API服务",
+    title="Industral Monitoring System API",
+    description="Industral Monitoring System 的后端API服务",
     version="1.0.0"
 )
 
@@ -97,6 +97,7 @@ def auto_detect_cameras():
                 registered_count = 0
                 for camera in detected_cameras:
                     camera_name = camera['name']
+                    print(f"检测到摄像头: {camera_name}")
                     if camera_name not in existing_device_names:
                         try:
                             # 创建一个配置，包括摄像头的device_id
@@ -108,13 +109,19 @@ def auto_detect_cameras():
                             }
                             
                             # 添加摄像头
-                            settings_service.add_device(
+                            settings_service.create_device(
                                 name=camera_name,
                                 type="camera",
                                 status="offline",
-                                config=config,
-                                description=f"自动检测到的摄像头 ({platform.system()})"
+                                config=config
                             )
+                            # settings_service.add_device(
+                            #     name=camera_name,
+                            #     type="camera",
+                            #     status="offline",
+                            #     config=config,
+                            #     description=f"自动检测到的摄像头 ({platform.system()})"
+                            # )
                             registered_count += 1
                             print(f"自动注册摄像头: {camera_name}")
                             # 添加到已有设备名称列表，避免重复添加

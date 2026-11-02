@@ -140,6 +140,7 @@ class CreateOperationRequest(CamelModel):
     name: str = Field(..., min_length=1, max_length=100, description="操作名称")
     description: Optional[str] = Field(None, description="操作描述")
     code: str = Field(..., description="操作代码")
+    outputType: Optional[str] = Field('image', description="输出类型: image=输出图像给下一节点, 其他=输出结果")
     inputParams: List[ParamConfigBase] = Field(default_factory=list, description="输入参数配置")
     outputParams: List[ParamConfigBase] = Field(default_factory=list, description="输出参数配置")
 
@@ -153,6 +154,7 @@ class UpdateOperationRequest(CamelModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100, description="操作名称")
     description: Optional[str] = Field(None, description="操作描述")
     code: Optional[str] = Field(None, description="操作代码")
+    outputType: Optional[str] = Field(None, description="输出类型")
     inputParams: Optional[List[ParamConfigBase]] = Field(None, description="输入参数配置")
     outputParams: Optional[List[ParamConfigBase]] = Field(None, description="输出参数配置")
 
@@ -218,6 +220,7 @@ async def create_operation(
             "name": request.name,
             "description": request.description,
             "code": request.code,
+            "output_type": request.outputType or 'image',
             "input_params": [param.dict() for param in request.inputParams],
             "output_params": [param.dict() for param in request.outputParams]
         }
@@ -263,6 +266,8 @@ async def update_operation(
                 param if isinstance(param, dict) else param.dict()
                 for param in update_data.pop("outputParams")
             ]
+        if "outputType" in update_data:
+            update_data["output_type"] = update_data.pop("outputType")
         
         # 直接传递字典参数
         operation = service.update_operation(operation_id, **update_data)

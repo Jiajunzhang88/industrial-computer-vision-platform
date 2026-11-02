@@ -142,6 +142,11 @@ export class ModelService {
     return response;
   }
 
+  async stopTraining(id: number): Promise<Model> {
+    const response = await apiService.post<Model>(`/models/${id}/stop`);
+    return response;
+  }
+
   /**
    * 导出模型
    */

@@ -195,6 +195,16 @@
                   :disable="selectedModel.status === ModelStatus.TRAINING"
                 />
               </div>
+              <div class="col-12 col-md-6">
+                <q-select
+                  outlined
+                  v-model="device"
+                  :options="deviceOptions"
+                  :label="t('model.training.params.device') || '训练设备'"
+                  class="full-width"
+                  :disable="selectedModel.status === ModelStatus.TRAINING"
+                />
+              </div>
             </div>
             <q-btn
               color="primary"
@@ -204,6 +214,14 @@
               @click="startTraining"
               :loading="selectedModel.status === ModelStatus.TRAINING"
               :disable="selectedModel.status === ModelStatus.TRAINING"
+            />
+            <q-btn
+              v-if="selectedModel.status === ModelStatus.TRAINING"
+              color="negative"
+              icon="stop"
+              label="停止训练"
+              class="q-mt-lg q-ml-md"
+              @click="stopTraining"
             />
           </q-card-section>
         </q-card>
@@ -601,6 +619,12 @@ const batchSize = ref(16)
 const imgSize = ref(640)
 const confThres = ref(0.25)
 const iouThres = ref(0.45)
+const device = ref('auto')
+const deviceOptions = [
+  { label: '自动（检测 CUDA GPU）', value: 'auto' },
+  { label: 'CPU', value: 'cpu' },
+  { label: 'GPU (CUDA)', value: 'cuda' }
+]
 
 // 获取选中的数据集
 const selectedDataset = computed(() => {
@@ -667,7 +691,7 @@ const getProgress = () => {
   } else if (selectedModel.value.metrics?.progress !== undefined) {
     return selectedModel.value.metrics.progress
   } else if (selectedModel.value.status === ModelStatus.TRAINING) {
-    return 0.5 // 中间状态
+    return 0 // 没有 epoch 数据时显示 0%，开始训练后会自动更新
   }
   
   return 0
@@ -688,6 +712,18 @@ const getProgressColor = (status: ModelStatus = ModelStatus.NOT_STARTED) => {
       return 'negative'
     default:
       return 'primary'
+  }
+}
+
+// 停止训练模型
+const stopTraining = async () => {
+  if (!selectedModel.value) return
+  try {
+    await modelService.stopTraining(selectedModel.value.id)
+    await refreshModel(selectedModel.value.id)
+    $q.notify({ type: 'warning', message: '训练已停止', position: 'top' })
+  } catch (e) {
+    $q.notify({ type: 'negative', message: '停止训练失败', position: 'top' })
   }
 }
 
@@ -719,7 +755,7 @@ const startTraining = async () => {
 // 更新模型参数
 const updateModelParameters = async () => {
   if (!selectedModel.value) return
-  
+
   try {
     await modelService.updateModel(selectedModel.value.id, {
       parameters: {
@@ -727,7 +763,8 @@ const updateModelParameters = async () => {
         batch_size: batchSize.value,
         img_size: imgSize.value,
         conf_thres: confThres.value,
-        iou_thres: iouThres.value
+        iou_thres: iouThres.value,
+        device: device.value
       }
     })
   } catch (error) {
@@ -738,13 +775,14 @@ const updateModelParameters = async () => {
 // 选择模型
 const selectModel = (model: Model) => {
   selectedModel.value = model
-  
+
   // 更新训练参数
   epochs.value = model.parameters.epochs || 50
   batchSize.value = model.parameters.batch_size || 16
   imgSize.value = model.parameters.img_size || 640
   confThres.value = model.parameters.conf_thres || 0.25
   iouThres.value = model.parameters.iou_thres || 0.45
+  device.value = model.parameters.device || 'auto'
   
   // 如果模型正在训练，获取日志并开始轮询状态
   if (model.status === ModelStatus.TRAINING) {
@@ -887,9 +925,16 @@ const refreshModel = async (modelId: number) => {
       models.value[index] = model
     }
     
-    // 更新选中的模型
+    // 更新选中的模型（保留前端解析的训练进度，避免被后端数据覆盖）
     if (selectedModel.value?.id === modelId) {
+      const prevProgress = selectedModel.value.metrics?.progress
       selectedModel.value = model
+      if (prevProgress !== undefined && model.status === ModelStatus.TRAINING) {
+        selectedModel.value.metrics = {
+          ...selectedModel.value.metrics,
+          progress: prevProgress
+        }
+      }
     }
     
     // 如果模型正在训练中，获取训练日志
@@ -1053,16 +1098,34 @@ const initTerminal = () => {
 // 获取模型日志的方法
 const fetchModelLogs = async () => {
   if (!selectedModel.value) return
-  
+
   try {
     const response = await modelService.getModelLogs(selectedModel.value.id)
     logs.value = response.logs
-    
+
+    // 从日志解析训练进度（匹配 epoch/total + GPU_mem 格式，如 "4/50         0G"）
+    if (selectedModel.value.status === 'training') {
+      const epochMatches = logs.value
+        .map(l => l.match(/(\d+)\/(\d+)\s+[\d.]+G/))
+        .filter(Boolean)
+      if (epochMatches.length > 0) {
+        const last = epochMatches[epochMatches.length - 1]
+        const currentEpoch = parseInt(last[1])
+        const totalEpochs = parseInt(last[2])
+        if (totalEpochs > 0 && currentEpoch <= totalEpochs) {
+          selectedModel.value.metrics = {
+            ...selectedModel.value.metrics,
+            progress: currentEpoch / totalEpochs
+          }
+        }
+      }
+    }
+
     // 更新终端显示
     if (terminal) {
       updateTerminal(logs.value)
     }
-    
+
     // 自动滚动到底部
     nextTick(() => {
       if (logs.value.length > 0 && terminal) {

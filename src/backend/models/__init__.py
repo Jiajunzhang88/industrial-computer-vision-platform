@@ -29,6 +29,8 @@ class Image(Base):
     dataset_id: Mapped[int] = mapped_column(Integer, ForeignKey("datasets.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     is_annotated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     dataset = relationship("Dataset", back_populates="images")
     annotation = relationship("Annotation", back_populates="image", cascade="all, delete-orphan")
 
@@ -90,6 +92,7 @@ class CVOperation(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str] = mapped_column(Text)
     code: Mapped[str] = mapped_column(Text, nullable=False)
+    output_type: Mapped[str] = mapped_column(String(20), nullable=False, default='image')  # image=输出图像给下一节点, 其他=输出结果
     input_params: Mapped[list[ParamConfig]] = mapped_column(JSON, nullable=False, default=list)  # 输入参数配置
     output_params: Mapped[list[ParamConfig]] = mapped_column(JSON, nullable=False, default=list)  # 输入参数配置
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)

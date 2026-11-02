@@ -19,7 +19,7 @@ import subprocess
 import re
 from sqlalchemy.orm import sessionmaker
 from ..models.base import engine
-from ..common.globals import TRAINING_LOGS
+from ..common.globals import TRAINING_LOGS, TRAINING_PROCESSES
 import sys
 
 # 设置日志
@@ -286,6 +286,35 @@ class ModelService:
             self.db.rollback()
             raise e
 
+    def stop_training(self, model_id: int) -> Model:
+        """停止模型训练"""
+        model = self.get_model(model_id)
+        if not model:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        # 杀掉训练子进程
+        if model_id in TRAINING_PROCESSES:
+            try:
+                TRAINING_PROCESSES[model_id].terminate()
+                TRAINING_PROCESSES[model_id].wait(timeout=5)
+            except Exception:
+                try:
+                    TRAINING_PROCESSES[model_id].kill()
+                except Exception:
+                    pass
+            del TRAINING_PROCESSES[model_id]
+
+        # 重置模型状态
+        model.status = ModelStatus.NOT_STARTED
+        model.updated_at = datetime.utcnow()
+        self.db.commit()
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        if model_id in TRAINING_LOGS:
+            TRAINING_LOGS[model_id].append(f"[{timestamp}] [系统] 训练已手动停止")
+
+        return model
+
     def start_training(self, model_id: int) -> Model:
         """启动模型训练"""
         model = self.get_model(model_id)
@@ -421,7 +450,23 @@ class ModelService:
             epochs = parameters.get('epochs', 20)
             batch_size = parameters.get('batch_size', 8)
             img_size = parameters.get('img_size', 640)
-            
+
+            # 设备选择：auto / cpu / cuda
+            device_raw = parameters.get('device') or 'auto'
+            if isinstance(device_raw, dict):
+                device_pref = str(device_raw.get('value', 'auto')).lower()
+            else:
+                device_pref = str(device_raw).lower()
+            cuda_available = torch.cuda.is_available()
+            if device_pref == 'cuda' and not cuda_available:
+                TRAINING_LOGS[model_id].append(f"[{timestamp}] [警告] 请求 GPU(CUDA) 但不可用，回退 CPU")
+                device = 'cpu'
+            elif device_pref == 'cpu':
+                device = 'cpu'
+            else:  # auto
+                device = 'cuda' if cuda_available else 'cpu'
+            TRAINING_LOGS[model_id].append(f"[{timestamp}] [系统] 训练设备: {device} (CUDA可用={cuda_available})")
+
             # 记录训练参数
             TRAINING_LOGS[model_id].append(f"[{timestamp}] [系统] 训练参数: epochs={epochs}, batch_size={batch_size}, img_size={img_size}")
             
@@ -435,32 +480,51 @@ class ModelService:
             
             # 准备训练命令 - 不同模型有不同命令格式
             if model_type == "YOLOv8":
+                yolo_exe = os.path.join(os.path.dirname(sys.executable), "yolo")
+                # 优先使用本地预下载的模型权重，避免每次联网下载
+                local_weights = os.path.join("weights", "yolo26n.pt")
+                model_arg = local_weights if os.path.exists(local_weights) else "yolov8n.pt"
                 cmd = [
-                    "yolo",
+                    yolo_exe,
                     "task=detect",
                     "mode=train",
                     f"data={os.path.abspath(data_yaml_path)}",
-                    "model=yolov8n.pt", 
+                    f"model={os.path.abspath(model_arg)}",
                     f"epochs={epochs}",
                     f"batch={batch_size}",
                     f"imgsz={img_size}",
                     f"project={project_dir}",
                     f"name={name}",
                     "exist_ok=True",
-                    "device=cpu"
+                    f"device={device}",
+                    # 数据增强：提高泛化能力（小数据集尤其重要）
+                    "hsv_h=0.015", "hsv_s=0.7", "hsv_v=0.4",  # 颜色抖动
+                    "degrees=10.0",  # 旋转±10度
+                    "translate=0.1",  # 平移10%
+                    "scale=0.5",  # 缩放±50%
+                    "fliplr=0.5",  # 左右翻转50%
+                    "mosaic=1.0",  # 马赛克增强
+                    "close_mosaic=10",  # 最后10 epoch关闭mosaic
                 ]
             elif model_type == "YOLOv5":
                 # 确保YOLOv5代码存在
                 yolov5_dir = "yolov5"
-                if not os.path.exists(yolov5_dir):
-                    subprocess.run(["git", "clone", "https://github.com/ultralytics/yolov5.git"])
-                    
-                # 将YOLOv5目录添加到路径    
+                if not os.path.exists(os.path.join(yolov5_dir, "train.py")):
+                    # 没 train.py 时尝试 clone；git 不可用则直接报错
+                    try:
+                        subprocess.run(["git", "clone", "https://github.com/ultralytics/yolov5.git"], check=True)
+                    except Exception as git_err:
+                        TRAINING_LOGS[model_id].append(f"[{timestamp}] [错误] YOLOv5 代码缺失且无法 git clone（系统未装 git 或网络不通）: {git_err}")
+                        self._update_training_status(model_id, ModelStatus.FAILED,
+                            error_message="YOLOv5 代码缺失且 git 不可用，请改用 YOLOv8 架构")
+                        return False
+
+                # 将YOLOv5目录添加到路径
                 if yolov5_dir not in sys.path:
                     sys.path.append(yolov5_dir)
-                    
+
                 cmd = [
-                    "python", f"{yolov5_dir}/train.py",
+                    sys.executable, os.path.join(yolov5_dir, "train.py"),
                     "--img", str(img_size),
                     "--batch", str(batch_size),
                     "--epochs", str(epochs),
@@ -469,7 +533,7 @@ class ModelService:
                     "--project", project_dir,
                     "--name", name,
                     "--exist-ok",
-                    "--device", "cpu"
+                    "--device", device
                 ]
             else:
                 logger.error(f"不支持的YOLO模型类型: {model_type}")
@@ -491,6 +555,7 @@ class ModelService:
                 universal_newlines=True,
                 bufsize=1
             )
+            TRAINING_PROCESSES[model_id] = process
             
             # 创建线程来读取stdout和stderr
             def read_output(stream, log_type):
@@ -515,31 +580,77 @@ class ModelService:
             
             # 等待进程完成
             returncode = process.wait()
-            
+
             # 等待线程完成
             stdout_thread.join()
             stderr_thread.join()
-            
+
+            # 等待文件句柄释放（yolo 进程刚退出，best.pt 可能还被占用）
+            time.sleep(3)
+
             # 记录训练结束信息
             timestamp = time.strftime("%H:%M:%S", time.localtime())
             training_time = time.time() - start_time
             
             if returncode == 0:
                 # 训练成功，更新模型状态
-                best_model_path = os.path.join(project_dir, name, "weights", "best.pt")
-                if os.path.exists(best_model_path):
-                    self.update_model(model_id, 
-                                    file_path=best_model_path, 
-                                    status=ModelStatus.COMPLETED)
-                    success_msg = f"{model_type}训练完成，耗时: {training_time:.1f}秒，模型保存在: {best_model_path}"
-                    logger.info(success_msg)
-                    TRAINING_LOGS[model_id].append(f"[{timestamp}] [系统] {success_msg}")
-                    return True
+                # v8 实际输出在 runs/detect/<project>/<name>/weights/，v5 直接在 <project>/<name>/weights/
+                possible_paths = [
+                    os.path.join(project_dir, name, "weights", "best.pt"),
+                    os.path.join("runs", "detect", project_dir, name, "weights", "best.pt"),
+                ]
+                best_model_path = None
+                for p in possible_paths:
+                    if os.path.exists(p):
+                        best_model_path = p
+                        break
+
+                if best_model_path:
+                    # 复制到统一位置 models/<name>/weights/，带重试（文件可能被 yolo 进程短暂占用）
+                    target_dir = os.path.join(project_dir, name, "weights")
+                    os.makedirs(target_dir, exist_ok=True)
+                    import shutil
+                    target_path = os.path.join(target_dir, "best.pt")
+                    copied = False
+                    for attempt in range(5):
+                        try:
+                            shutil.copy2(best_model_path, target_path)
+                            copied = True
+                            break
+                        except (PermissionError, OSError) as e:
+                            logger.warning(f"复制 best.pt 失败（第{attempt+1}次）: {e}，2秒后重试...")
+                            time.sleep(2)
+                    if not copied:
+                        # 最后一次尝试用读取字节方式
+                        try:
+                            with open(best_model_path, 'rb') as f:
+                                data = f.read()
+                            with open(target_path, 'wb') as f:
+                                f.write(data)
+                            copied = True
+                        except Exception as e:
+                            logger.error(f"最终复制失败: {e}")
+
+                    if copied:
+                        self.update_model(model_id,
+                                        file_path=target_path,
+                                        status=ModelStatus.COMPLETED)
+                        success_msg = f"{model_type}训练完成，耗时: {training_time:.1f}秒，模型保存在: {target_path}"
+                        logger.info(success_msg)
+                        TRAINING_LOGS[model_id].append(f"[{timestamp}] [系统] {success_msg}")
+                        return True
+                    else:
+                        error_msg = f"{model_type}训练完成但复制模型文件失败（文件被占用）"
+                        logger.error(error_msg)
+                        TRAINING_LOGS[model_id].append(f"[{timestamp}] [错误] {error_msg}")
+                        self._update_training_status(model_id, ModelStatus.FAILED,
+                            error_message="best.pt copy failed (file locked)")
+                        return False
                 else:
                     error_msg = f"{model_type}训练完成但模型文件不存在"
                     logger.error(error_msg)
                     TRAINING_LOGS[model_id].append(f"[{timestamp}] [错误] {error_msg}")
-                    self._update_training_status(model_id, ModelStatus.FAILED, 
+                    self._update_training_status(model_id, ModelStatus.FAILED,
                         error_message=f"{model_type} training completed but model file not found")
                     return False
             else:

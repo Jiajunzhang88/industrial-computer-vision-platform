@@ -1,0 +1,6 @@
+path: I:\git\industrial-computer-vision-platform\data\datasets\dataset_1
+train: train/images
+val: val/images
+nc: 1
+
+names: ["text"]

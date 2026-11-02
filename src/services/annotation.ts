@@ -26,6 +26,18 @@ export interface Image {
   createdAt: string
 }
 
+// 垃圾箱图片
+export interface TrashImage {
+  id: number
+  filename: string
+  url: string
+  datasetId: number
+  datasetName: string
+  createdAt: string
+  deletedAt: string
+  isAnnotated: boolean
+}
+
 // 保存标注请求 - 使用 Annotorious 格式
 export interface SaveAnnotationRequest {
   annotations: any[] // 使用 Annotorious 的原生格式
@@ -112,6 +124,34 @@ export class AnnotationService {
 
   async deleteImage(imageId: number): Promise<void> {
     await apiService.delete(`/annotation/images/${imageId}`)
+  }
+
+  // 垃圾箱
+  async getTrashImages(): Promise<TrashImage[]> {
+    const response = await apiService.get<TrashImage[]>(`/annotation/trash`)
+    return response
+  }
+
+  async restoreImage(imageId: number): Promise<void> {
+    await apiService.post<any>(`/annotation/images/${imageId}/restore`, {})
+  }
+
+  async purgeImage(imageId: number): Promise<void> {
+    await apiService.delete(`/annotation/images/${imageId}/purge`)
+  }
+
+  // 强制释放摄像头（结束占用摄像头的应用进程）
+  async forceReleaseCamera(): Promise<{ success: boolean; killed: string[] }> {
+    const response = await apiService.post<any>(
+      `/cameras/force-release`,
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      } as any
+    )
+    return response
   }
 
   // 标注管理

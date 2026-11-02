@@ -1,0 +1,2 @@
+﻿cols: ['id', 'name', 'type', 'model', 'config', 'status', 'created_at', 'updated_at']
+(1, 'Camera 0', 'camera', None, '{"source": "device:0", "resolution": "640x480", "fps": 30}', 'online', '2025-12-23 06:05:38.029090', '2026-10-31 09:27:12.378630')

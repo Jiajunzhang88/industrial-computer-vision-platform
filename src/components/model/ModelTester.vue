@@ -60,14 +60,24 @@
             </template>
           </q-file>
 
+          <q-btn
+            label="摄像头抓拍"
+            color="amber"
+            icon="camera_alt"
+            class="q-mt-sm full-width"
+            unelevated
+            @click="captureFromCamera"
+            :loading="capturing"
+          />
+
           <div class="q-mt-md">
-            <q-btn 
-              :label="t('modelTester.image.test')" 
-              color="primary" 
+            <q-btn
+              :label="t('modelTester.image.test')"
+              color="primary"
               icon="science"
               @click="testModel"
               :loading="loading"
-              :disable="!imageFile || loading"
+              :disable="!previewUrl || loading"
               class="full-width"
             />
           </div>
@@ -155,8 +165,9 @@ const emit = defineEmits<{
 const imageFile = ref<File | null>(null);
 const previewUrl = ref<string | null>(null);
 const loading = ref(false);
-const confThreshold = ref(0.25);
-const iouThreshold = ref(0.45);
+const capturing = ref(false);
+const confThreshold = ref(0.5);
+const iouThreshold = ref(0.6);
 const resultImage = ref<string | null>(null);
 const detections = ref<any[] | null>(null);
 const error = ref<string | null>(null);
@@ -181,9 +192,31 @@ const handleImageSelected = (file: File | null) => {
   error.value = null;
 };
 
+// 摄像头抓拍
+const captureFromCamera = async () => {
+  capturing.value = true;
+  try {
+    const resp = await fetch('/api/cameras/0/snapshot?return_json=true');
+    const data = await resp.json();
+    if (data.image) {
+      previewUrl.value = data.image;
+      resultImage.value = null;
+      detections.value = null;
+      imageFile.value = null;
+      $q.notify({ type: 'positive', message: '抓拍成功', position: 'top' });
+    } else {
+      $q.notify({ type: 'negative', message: '抓拍失败', position: 'top' });
+    }
+  } catch (e: any) {
+    $q.notify({ type: 'negative', message: '摄像头抓拍失败: ' + e.message, position: 'top' });
+  } finally {
+    capturing.value = false;
+  }
+};
+
 // 测试模型
 const testModel = async () => {
-  if (!props.selectedModel || !imageFile.value) {
+  if (!props.selectedModel || !previewUrl.value) {
     return;
   }
 
@@ -248,8 +281,8 @@ watch(() => props.selectedModel, () => {
   
   // 如果有模型，从模型参数中获取默认阈值
   if (props.selectedModel?.parameters) {
-    confThreshold.value = props.selectedModel.parameters.conf_thres || 0.25;
-    iouThreshold.value = props.selectedModel.parameters.iou_thres || 0.45;
+    confThreshold.value = props.selectedModel.parameters.conf_thres || 0.5;
+    iouThreshold.value = props.selectedModel.parameters.iou_thres || 0.6;
   }
 });
 </script>
