@@ -280,7 +280,7 @@ const validateInputs = (): boolean => {
     if (param.required && (inputValues.value[param.name] === undefined || inputValues.value[param.name] === '')) {
       $q.notify({
         type: 'negative',
-        message: `${param.name} 是必填项`
+        message: t('cv.operationTestPanel.notifications.required', { name: param.name })
       })
       return false
     }
@@ -314,7 +314,7 @@ const prepareParams = async (): Promise<Record<string, any>> => {
           try {
             value = JSON.parse(value)
           } catch (e) {
-            throw new Error(`${param.name} 的值不是有效的 JSON 格式`)
+            throw new Error(t('cv.operationTestPanel.notifications.invalidJson', { name: param.name }))
           }
         }
         break
@@ -337,7 +337,7 @@ const runTest = async () => {
   if (!props.operation.id) {
     $q.notify({
       type: 'negative',
-      message: '请先保存操作'
+      message: t('cv.operationTestPanel.notifications.saveFirst')
     })
     return
   }
@@ -359,13 +359,13 @@ const runTest = async () => {
 
     $q.notify({
       type: 'positive',
-      message: '测试运行成功'
+      message: t('cv.operationTestPanel.notifications.success')
     })
   } catch (error) {
     console.error('测试失败:', error)
     $q.notify({
       type: 'negative',
-      message: error instanceof Error ? error.message : '测试运行失败'
+      message: error instanceof Error ? error.message : t('cv.operationTestPanel.notifications.failed')
     })
   } finally {
     testing.value = false

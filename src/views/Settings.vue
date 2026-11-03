@@ -31,8 +31,18 @@
               <q-item>
                 <q-item-section>
                   <q-item-label>{{ t('settings.system.dataRetention') }}</q-item-label>
-                  <q-select v-model="systemSettings.data_retention" :options="['7天', '30天', '90天', '180天', '365天']"
-                    outlined dense class="q-mt-sm" @update:model-value="saveSystemSettings" />
+                  <q-select
+                    v-model="systemSettings.data_retention"
+                    :options="dataRetentionOptions"
+                    option-label="label"
+                    option-value="value"
+                    emit-value
+                    map-options
+                    outlined
+                    dense
+                    class="q-mt-sm"
+                    @update:model-value="saveSystemSettings"
+                  />
                 </q-item-section>
               </q-item>
               <q-item>
@@ -316,6 +326,10 @@ import { useI18n } from 'vue-i18n'
 
 const $q = useQuasar()
 const { t, locale } = useI18n()
+const dataRetentionOptions = computed(() => [7, 30, 90, 180, 365].map(count => ({
+  label: t('settings.system.dataRetentionDays', { count }),
+  value: `${count}天`
+})))
 
 // Device config type definition to fix TypeScript errors
 interface DeviceConfig {
@@ -411,8 +425,6 @@ const handleLanguageChange = (newLanguage: string) => {
     message: t('settings.notifications.languageChanged'),
     position: 'top'
   });
-  // 刷新页面
-  window.location.reload();
 }
 
 // Save system settings
@@ -701,10 +713,10 @@ const resetDeviceForm = () => {
 // Device status text
 const deviceStatusText = (status: string): string => {
   switch (status) {
-    case 'online': return '在线'
-    case 'offline': return '离线'
-    case 'error': return '故障'
-    default: return '未知'
+    case 'online': return t('settings.devices.status.online')
+    case 'offline': return t('settings.devices.status.offline')
+    case 'error': return t('settings.devices.status.error')
+    default: return t('settings.devices.status.unknown')
   }
 }
 
@@ -794,12 +806,12 @@ const disableAutoCheck = ref(false);
 // Get camera stream URL
 const getCameraStreamUrl = (device: Device): string => {
   if (!device.config || !device.config.source) {
-    return '未配置';
+    return t('settings.devices.preview.notConfigured');
   }
 
   const cameraId = cameraService.getCameraIdFromDevice(device);
   if (!cameraId) {
-    return '未配置';
+    return t('settings.devices.preview.notConfigured');
   }
 
   return cameraService.getCameraStreamUrl(cameraId);

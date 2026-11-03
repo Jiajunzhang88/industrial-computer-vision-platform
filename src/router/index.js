@@ -1,5 +1,4 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import i18n from '../i18n/index'
 
 // 路由配置
 const routes = [
@@ -11,31 +10,31 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../views/Dashboard.vue'),
-    meta: { title: i18n.global.t('routes.dashboard'), icon: 'dashboard' }
+    meta: { titleKey: 'routes.dashboard', icon: 'dashboard' }
   },
   {
     path: '/realtime',
     name: 'Realtime',
     component: () => import('../views/Realtime.vue'),
-    meta: { title: i18n.global.t('routes.realtime'), icon: 'monitor' }
+    meta: { titleKey: 'routes.realtime', icon: 'monitor' }
   },
   {
     path: '/history',
     name: 'History',
     component: () => import('../views/History.vue'),
-    meta: { title: i18n.global.t('routes.history'), icon: 'history' }
+    meta: { titleKey: 'routes.history', icon: 'history' }
   },
   {
     path: '/annotation',
     name: 'Annotation',
     component: () => import('../views/Annotation.vue'),
-    meta: { title: i18n.global.t('routes.annotation'), icon: 'edit' }
+    meta: { titleKey: 'routes.annotation', icon: 'edit' }
   },
   {
     path: '/model',
     name: 'Model',
     component: () => import('../views/Model.vue'),
-    meta: { title: i18n.global.t('routes.model'), icon: 'model_training' }
+    meta: { titleKey: 'routes.model', icon: 'model_training' }
   },
   {
     path: '/model/test/:id',
@@ -45,26 +44,26 @@ const routes = [
       mode: 'test',
       modelId: parseInt(route.params.id)
     }),
-    meta: { title: i18n.global.t('routes.modelTest'), parent: 'Model' }
+    meta: { titleKey: 'routes.modelTest', parent: 'Model' }
   },
   {
     path: '/cv-operations',
     name: 'CVOperations',
     component: () => import('../views/CVOperation.vue'),
-    meta: { title: i18n.global.t('routes.cvOperations'), icon: 'science' }
+    meta: { titleKey: 'routes.cvOperations', icon: 'science' }
   },
   {
     path: '/settings',
     name: 'Settings',
     component: () => import('../views/Settings.vue'),
-    meta: { title: i18n.global.t('routes.settings'), icon: 'settings' }
+    meta: { titleKey: 'routes.settings', icon: 'settings' }
   },
   // 404页面
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('../views/NotFound.vue'),
-    meta: { title: i18n.global.t('routes.notFound') }
+    meta: { titleKey: 'routes.notFound' }
   }
 ]
 

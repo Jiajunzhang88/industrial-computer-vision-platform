@@ -267,7 +267,9 @@ const deleteOperation = async () => {
 
     $q.notify({
       type: 'positive',
-      message: operationToDelete.value ? '删除成功' : '批量删除成功',
+      message: t(operationToDelete.value
+        ? 'cv.operation.notifications.deleteSuccess'
+        : 'cv.operation.notifications.batchDeleteSuccess'),
       position: 'top',
       timeout: 3000
     })
@@ -275,7 +277,7 @@ const deleteOperation = async () => {
     console.error('删除失败:', error)
     $q.notify({
       type: 'negative',
-      message: '删除失败',
+      message: t('cv.operation.notifications.deleteError'),
       position: 'top',
       timeout: 3000
     })
@@ -370,12 +372,12 @@ const handleFileImport = async (event: Event) => {
 
     // 检查文件大小
     if (file.size > 10 * 1024 * 1024) { // 10MB
-      throw new Error('文件大小不能超过10MB')
+      throw new Error(t('cv.operation.validation.fileSizeLimit'))
     }
 
     // 检查文件类型
     if (!file.name.endsWith('.xlsx')) {
-      throw new Error('只支持.xlsx格式的文件')
+      throw new Error(t('cv.operation.validation.fileTypeError'))
     }
 
     const wb = await readExcelFile(file)
@@ -387,7 +389,7 @@ const handleFileImport = async (event: Event) => {
     for (const row of data as { [k: string]: any }[]) {
       for (const field of requiredFields) {
         if (!row[field]) {
-          throw new Error(`缺少必需字段: ${field}`)
+          throw new Error(t('cv.operation.validation.missingField', { field }))
         }
       }
     }
@@ -418,7 +420,7 @@ const handleFileImport = async (event: Event) => {
         results.success++
       } catch (error) {
         results.failed++
-        results.errors.push(`${t('cv.operation.import.failed', { name: row['操作名称'] })}: ${error instanceof Error ? error.message : t('common.unknownError')}`)
+        results.errors.push(`${t('cv.operation.notifications.importFailed', { name: row['操作名称'] })}: ${error instanceof Error ? error.message : t('common.unknownError')}`)
       }
     }
 
@@ -428,7 +430,7 @@ const handleFileImport = async (event: Event) => {
     if (results.failed > 0) {
       $q.notify({
         type: 'warning',
-        message: t('cv.operation.import.partialSuccess', { success: results.success, failed: results.failed }),
+        message: t('cv.operation.notifications.importPartialSuccess', { success: results.success, failed: results.failed }),
         position: 'top',
         timeout: 5000
       })

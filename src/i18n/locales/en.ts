@@ -14,6 +14,8 @@ export default {
     info: 'Info',
     menu: 'Menu',
     systemName: 'Industrial Monitoring System',
+    unknownError: 'Unknown error',
+    to: 'to',
   },
   settings: {
     system: {
@@ -21,6 +23,7 @@ export default {
       language: 'System Language',
       autoSaveInterval: 'Auto Save Interval',
       dataRetention: 'Data Retention',
+      dataRetentionDays: '{count} days',
       alarmThreshold: 'Alarm Threshold'
     },
     mes: {
@@ -60,6 +63,7 @@ export default {
           edit: 'Edit Device'
         },
         name: 'Device Name',
+          nameRequired: 'Please enter a device name',
         type: 'Device Type',
         model: 'Device Model',
         config: 'Device Configuration',
@@ -84,7 +88,7 @@ export default {
           }
         },
         plc: {
-          ip: 'IP地址',
+          ip: 'IP Address',
           rack: 'Rack Number',
           slot: 'Slot Number'
         }
@@ -155,6 +159,7 @@ export default {
     notFound: 'Page Not Found'
   },
   dashboard: {
+    invalidDate: 'Invalid date',
     systemStatus: {
       title: 'System Status',
       uptime: 'Uptime',
@@ -220,6 +225,11 @@ export default {
       unknown: 'Unknown'
     },
     dateRange: 'Date Range',
+    notifications: {
+      loadFailed: 'Failed to load history records',
+      deleteSuccess: 'Record deleted',
+      deleteFailed: 'Failed to delete record'
+    },
     search: 'Search',
     export_excel: 'Export',
     noData: 'No historical records',
@@ -285,6 +295,37 @@ export default {
       more: 'More',
       deleteDataset: 'Delete Dataset'
     },
+    trash: {
+      title: 'Trash',
+      imageCount: '{count} images',
+      empty: 'Trash is empty',
+      hint: 'Deleted images are moved here and can be restored.',
+      restore: 'Restore',
+      deletePermanently: 'Delete Permanently',
+      confirmDeleteTitle: 'Delete Image',
+      confirmDelete: 'Delete "{name}"? It will be moved to the trash and can be restored.',
+      confirmPermanentlyTitle: 'Delete Permanently',
+      confirmPermanently: 'Permanently delete "{name}"? This cannot be undone and will also delete its files and annotations.',
+      moved: 'Image moved to trash',
+      restored: '"{name}" restored',
+      restoreFailed: 'Failed to restore image',
+      deleted: 'Image permanently deleted',
+      deleteFailed: 'Failed to permanently delete image'
+    },
+    camera: {
+      captureAndUpload: 'Capture and Upload',
+      starting: 'Starting camera...',
+      takePhotoAndUpload: 'Take Photo and Upload',
+      notSupported: 'Camera access is not supported by this browser. Please use Chrome or Edge.',
+      inUseTitle: 'Camera in Use',
+      inUse: 'The camera is being used by another application. Force-switch to it? This will close the application using it (such as Camera, Teams, Zoom, or OBS).',
+      forceSwitch: 'Force Switch',
+      forceSwitchFailed: 'Could not switch camera. Please close the application using it manually.',
+      accessFailed: 'Unable to access camera. Check whether it is in use.',
+      photoFailed: 'Failed to take photo',
+      photoSuccess: 'Photo captured and uploaded',
+      photoUploadFailed: 'Failed to upload photo. Please try again.'
+    },
     dialogs: {
       upload: {
         title: 'Upload Images',
@@ -322,7 +363,23 @@ export default {
       deleteDatasetSuccess: 'Dataset deleted successfully',
       deleteDatasetFailed: 'Failed to delete dataset, please try again',
       deleteImageSuccess: 'Image deleted successfully',
-      deleteImageFailed: 'Failed to delete image, please try again'
+      deleteImageFailed: 'Failed to delete image, please try again',
+      loadImagesFailed: 'Failed to load images. Please try again.',
+      uploadSuccess: 'Images uploaded successfully',
+      uploadFailed: 'Failed to upload images. Please try again.',
+      selectDataset: 'Please select a dataset first',
+      importProgress: 'Importing annotation data...',
+      exportProgress: 'Exporting annotation dataset...',
+      importComplete: 'Import complete: {success} succeeded, {failed} failed',
+      importSuccess: 'Imported {count} annotations successfully',
+      importFailed: 'Import failed',
+      exportSuccess: 'Annotation dataset exported successfully',
+      exportFailed: 'Failed to export annotation dataset. Please try again.',
+      importFileTooLarge: 'File size cannot exceed 10 MB',
+      importFileType: 'Only .xlsx files are supported',
+      importMissingField: 'The import file is missing the required annotation data field',
+      invalidAnnotationData: 'Invalid annotation data format',
+      importItemFailed: 'Failed to import annotation record {index}: {error}'
     }
   },
   annotator: {
@@ -378,19 +435,24 @@ export default {
   },
   generateData: {
     title: 'Generate Data',
+    nameSuffix: ' Generated',
     sourceDataset: {
       title: 'Source Dataset',
       name: 'Dataset Name',
       imageCount: '{count} Images',
-      annotatedCount: '{count} Annotated'
+      annotatedCount: '{count} Annotated',
+      operation: 'Operation'
     },
     targetDataset: {
       title: 'Target Dataset',
       newOption: 'Create New Dataset',
       existingOption: 'Use Existing Dataset',
       sourceOption: 'Use Source Dataset',
+      type: 'Dataset Type',
+      select: 'Select Dataset',
       new: {
         name: {
+          label: 'New Dataset Name',
           required: 'Please enter dataset name'
         }
       },
@@ -430,7 +492,11 @@ export default {
     progress: {
       title: 'Generation Progress',
       cancel: 'Cancel Generation',
-      close: 'Close'
+      close: 'Close',
+      preparing: 'Preparing data...',
+      processed: 'Processed {count} / {total} operations',
+      generating: 'Generating: {name} ({count}/{total})',
+      creatingTarget: 'Creating target dataset...'
     },
     configuration: {
       title: '{name} Configuration',
@@ -495,12 +561,19 @@ export default {
     params: {
       title: 'Parameter Settings',
       confThreshold: 'Confidence Threshold',
-      iouThreshold: 'IOU Threshold'
+      iouThreshold: 'IOU Threshold',
+      preprocessing: 'Preprocessing',
+      imageSize: 'Inference Image Size (imgsz)',
+      postprocessing: 'Postprocessing / NMS',
+      maxDetections: 'Maximum Detections (max_det)',
+      classAgnosticNms: 'Class-agnostic NMS (agnostic)',
+      autoRetest: 'Automatically retest after parameter changes'
     },
     image: {
       title: 'Test Image',
       select: 'Select Image',
-      test: 'Test Model'
+      test: 'Test Model',
+      cameraCapture: 'Capture from Camera'
     },
     result: {
       title: 'Test Results',
@@ -516,38 +589,41 @@ export default {
       noObjectsDetected: 'No objects detected',
       detectionCount: '{count} objects detected',
       testFailed: 'Test failed: {error}',
-      testError: 'Test error: {error}'
+      testError: 'Test error: {error}',
+      captureSuccess: 'Image captured',
+      captureFailed: 'Failed to capture image',
+      cameraCaptureFailed: 'Camera capture failed: {error}'
     }
   },
   alarmPanel: {
     title: {
       info: '',
-      warning: '系统警告',
-      error: '系统错误',
-      critical: '严重故障',
-      default: '系统告警'
+      warning: 'System Warning',
+      error: 'System Error',
+      critical: 'Critical Failure',
+      default: 'System Alert'
     },
     actions: {
-      acknowledgeAll: '确认所有',
-      close: '关闭'
+      acknowledgeAll: 'Acknowledge All',
+      close: 'Close'
     },
     status: {
-      alarmCount: '共 {count} 条告警',
-      emergencyStop: '紧急停止'
+      alarmCount: '{count} alarms',
+      emergencyStop: 'Emergency Stop'
     },
     notifications: {
-      alarmAcknowledged: '告警已确认',
-      allAlarmsAcknowledged: '所有告警已确认'
+      alarmAcknowledged: 'Alarm acknowledged',
+      allAlarmsAcknowledged: 'All alarms acknowledged'
     }
   },
   cameraPreview: {
-    loading: '加载摄像头...',
+    loading: 'Loading camera...',
     error: {
-      connection: '无法连接到摄像头',
-      status: '获取摄像头状态出错:'
+      connection: 'Unable to connect to camera',
+      status: 'Error getting camera status:'
     },
     stream: {
-      alt: '摄像头画面'
+      alt: 'Camera feed'
     }
   },
   model: {
@@ -566,6 +642,8 @@ export default {
       title: 'Training Parameters',
       params: {
         architecture: 'Model Architecture',
+        device: 'Training Device',
+        deviceAuto: 'Auto (detect CUDA GPU)',
         epochs: 'Training Epochs',
         batchSize: 'Batch Size',
         imgSize: 'Image Size',
@@ -586,6 +664,18 @@ export default {
         testModel: 'Test Model',
         viewLogs: 'View Logs',
         viewFiles: 'View Files'
+      },
+      status: {
+        notStarted: 'Not started',
+        training: 'Training',
+        completed: 'Completed',
+        failed: 'Failed',
+        trainingWithDots: 'Training{dots}'
+      },
+      timeUnits: {
+        hours: '{count}h',
+        minutes: '{count}m',
+        seconds: '{count}s'
       }
     },
     progress: {
@@ -609,6 +699,17 @@ export default {
       download: 'Download File',
       preview: 'Preview File',
       empty: 'No files available',
+      directory: 'Directory',
+      previewImageAlt: 'File preview',
+      unableToLoadContent: 'Unable to load file content: {name}',
+      upLevel: 'Parent Directory',
+      previewDialog: {
+        unsupported: 'Preview is not available for this file type',
+        actions: {
+          download: 'Download',
+          close: 'Close'
+        }
+      },
       actions: {
         root: 'Return to Root',
       }
@@ -638,7 +739,13 @@ export default {
       copyModelIdFailed: 'Failed to copy model ID',
       copyLogs: 'Logs copied',
       copyLogsFailed: 'Failed to copy logs',
-      downloadStarted: 'Started downloading {name}'
+      downloadStarted: 'Started downloading {name}',
+      trainingStopped: 'Training stopped',
+      stopTrainingFailed: 'Failed to stop training',
+      exportSuccess: 'Model exported: {path}',
+      exportFailed: 'Failed to export model: {error}',
+      loadModelsFailed: 'Failed to load model list',
+      loadFilesFailed: 'Failed to get model file list'
     },
     status: {
       empty: 'Please select a model',
@@ -765,7 +872,8 @@ export default {
       processFailed: 'Processing failed',
       unknownError: 'Unknown error',
       batchUpload: 'Batch upload',
-      cameraStreamFailed: 'Camera stream connection failed, please check camera status'
+      cameraStreamFailed: 'Camera stream connection failed, please check camera status',
+      cameraError: 'Camera error: {error}'
     },
     status: {
       online: 'Online',
@@ -787,6 +895,7 @@ export default {
       noCamera: 'No active camera stream, please upload an image',
       uploadedImage: 'Uploaded image, waiting for processing',
       videoStream: 'Video Stream',
+      streamStatus: 'Stream status:',
       streaming: 'Streaming',
       stopped: 'Stopped',
       useUploadedImage: 'Use uploaded image',
@@ -794,7 +903,23 @@ export default {
       capture: 'Capture',
       uploadImage: 'Upload Image',
       stopMonitoring: 'Stop Monitoring',
-      startMonitoring: 'Start Monitoring'
+      startMonitoring: 'Start Monitoring',
+      messages: {
+        noStreamUrl: 'No video stream URL provided',
+        videoElementMissing: 'Video element not found',
+        processingWait: 'Processing in progress. Please wait.',
+        cameraNotReady: 'Camera is not ready',
+        captureFailed: 'Failed to capture image',
+        noUploadedImage: 'No image uploaded',
+        readyForProcessing: 'Image is ready for processing',
+        imageOnly: 'Please upload image files only',
+        preparingImages: 'Preparing to process {count} images',
+        imageReadFailed: 'Failed to read image',
+        unknownError: 'Unknown error',
+        unableToReadImage: 'Unable to read image data',
+        batchFailed: 'Failed to process images in batch',
+        uploadFailed: 'Failed to process uploaded files'
+      }
     }
   },
   cv: {
@@ -839,7 +964,10 @@ export default {
       },
       validation: {
         nameRequired: 'Operation name cannot be empty',
-        invalidCode: 'Invalid code format'
+        invalidCode: 'Invalid code format',
+        fileSizeLimit: 'File size cannot exceed 10MB',
+        fileTypeError: 'Only .xlsx files are supported',
+        missingField: 'Missing required field: {field}'
       },
       importExport: {
         importErrorDetails: 'Import Error Details',
@@ -995,6 +1123,13 @@ export default {
       validation: {
         required: 'Required field',
         invalidJson: 'Please enter valid JSON format'
+      },
+      notifications: {
+        required: '{name} is required',
+        invalidJson: '{name} is not valid JSON',
+        saveFirst: 'Please save the operation first',
+        success: 'Operation test completed successfully',
+        failed: 'Operation test failed'
       }
     },
     pipelineEditor: {
@@ -1016,6 +1151,33 @@ export default {
       nodeToolbox: {
         title: 'Node Toolbox'
       },
+      nodeTypes: {
+        start: 'Start',
+        end: 'End',
+        operation: 'Operation',
+        parallel: 'Parallel',
+        merge: 'Merge',
+        condition: 'Condition',
+        unknown: 'Unknown'
+      },
+      parameters: {
+        inputTitle: 'Input Parameters',
+        outputTitle: 'Output Parameters',
+        item: 'Parameter {index}',
+        addInput: 'Add Input Parameter',
+        addOutput: 'Add Output Parameter',
+        mapOutput: 'Map to Node Output',
+        noMatchingOutput: 'No matching node output found',
+        noTrainedModels: 'No trained models found. Train a model first.',
+        noDescription: 'No description',
+        pipelineInput: 'Pipeline input: {name}',
+        nodeOutput: '{node} output: {name}',
+        valueSource: 'Value Source',
+        customValue: 'Custom Value',
+        customValueJson: 'Custom Value (JSON Format)',
+        condition: 'Condition Expression',
+        conditionHint: 'Use a JavaScript expression, e.g. input.value > 10'
+      },
       nodeProperties: {
         title: 'Node Properties',
         name: 'Node Name',
@@ -1035,13 +1197,68 @@ export default {
         redo: 'Redo (Ctrl+Y)',
         delete: 'Delete Selected (Delete)',
         clear: 'Clear Canvas',
+        clearConfirmTitle: 'Clear Canvas',
+        clearConfirmMessage: 'Are you sure you want to clear the pipeline design? This action cannot be undone.',
         center: 'Center View',
         zoomIn: 'Zoom In',
-        zoomOut: 'Zoom Out'
+        zoomOut: 'Zoom Out',
+        yes: 'Yes',
+        no: 'No'
       },
       notifications: {
         cannotDeleteStartEnd: 'Cannot delete start and end nodes',
-        initFailed: 'Failed to initialize pipeline designer'
+        initFailed: 'Failed to initialize pipeline designer',
+        operationLoadFailed: 'Failed to load operation details',
+        operationLoadError: 'Failed to get operation details',
+        operationNotSelected: 'Operation node "{name}" has no selected operation',
+        invalidOperationInputCount: 'Operation nodes must have exactly one incoming edge',
+        invalidOperationOutputCount: 'Operation nodes must have exactly one outgoing edge',
+        invalidConditionInputCount: 'Condition nodes must have exactly one incoming edge',
+        invalidConditionOutputCount: 'Condition nodes must have exactly two outgoing edges',
+        invalidParallelInputCount: 'Parallel nodes must have one incoming edge and may have multiple outgoing edges',
+        invalidMergeOutputCount: 'Merge nodes must have one outgoing edge and may have multiple incoming edges',
+        invalidStartEdges: 'Start nodes can only have outgoing edges',
+        invalidEndEdges: 'End nodes can only have incoming edges',
+        invalidCanvas: 'Failed to initialize canvas',
+        operationOnlyEdge: 'Operation nodes can only have one incoming edge',
+        operationOnlyOutgoingEdge: 'Operation nodes can only have one outgoing edge'
+      }
+    },
+    pipelineTestPanel: {
+      title: 'Pipeline Test',
+      actions: {
+        run: 'Run',
+        close: 'Close',
+        clearLogs: 'Clear Logs'
+      },
+      input: {
+        title: 'Input Parameters',
+        required: 'Required',
+        cameraCapture: 'Capture from Camera',
+        jsonFormat: ' (JSON format)',
+        invalidJson: 'Please enter valid JSON format'
+      },
+      output: {
+        title: 'Output Results',
+        noData: 'No data',
+        imagePreview: 'Image Data Preview',
+        image: '[Image data]'
+      },
+      log: {
+        title: 'Execution Log',
+        empty: 'No execution logs yet. Run the pipeline to begin.'
+      },
+      notifications: {
+        captureSuccess: 'Image captured successfully',
+        captureNoImage: 'Capture failed: no image was received',
+        captureFailed: 'Capture failed: {error}',
+        required: '{name} is required',
+        invalidJson: '{name} is not valid JSON',
+        ready: 'Preparing to run pipeline',
+        inputsReady: 'Input parameters are ready: {names}',
+        output: 'Output parameter {name}: {value}',
+        success: 'Pipeline completed successfully',
+        failed: 'Execution failed: {error}'
       }
     }
   }

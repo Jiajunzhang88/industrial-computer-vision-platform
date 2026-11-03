@@ -13,7 +13,9 @@ export default {
     warning: '警告',
     info: '信息',
     menu: '菜单',
-    systemName: 'Industrial Monitoring System',
+    systemName: '工业监控系统',
+    unknownError: '未知错误',
+    to: '至',
   },
   settings: {
     system: {
@@ -21,6 +23,7 @@ export default {
       language: '系统语言',
       autoSaveInterval: '自动保存间隔',
       dataRetention: '数据保留时间',
+      dataRetentionDays: '{count}天',
       alarmThreshold: '告警阈值'
     },
     mes: {
@@ -60,6 +63,7 @@ export default {
           edit: '编辑设备'
         },
         name: '设备名称',
+        nameRequired: '请输入设备名称',
         type: '设备类型',
         model: '设备型号',
         config: '设备配置',
@@ -155,6 +159,7 @@ export default {
     notFound: '页面未找到'
   },
   dashboard: {
+    invalidDate: '无效日期',
     systemStatus: {
       title: '系统状态',
       uptime: '运行时间',
@@ -220,6 +225,11 @@ export default {
       unknown: '未知'
     },
     dateRange: '时间范围',
+    notifications: {
+      loadFailed: '加载历史记录失败',
+      deleteSuccess: '记录已删除',
+      deleteFailed: '删除记录失败'
+    },
     search: '搜索',
     export_excel: '导出',
     noData: '无历史记录数据',
@@ -285,6 +295,37 @@ export default {
       more: '更多',
       deleteDataset: '删除数据集'
     },
+    trash: {
+      title: '垃圾箱',
+      imageCount: '{count} 张图片',
+      empty: '垃圾箱为空',
+      hint: '删除的图片会先移到这里，可随时恢复。',
+      restore: '恢复',
+      deletePermanently: '永久删除',
+      confirmDeleteTitle: '删除图片',
+      confirmDelete: '确定删除「{name}」吗？删除后将移入垃圾箱，可随时恢复。',
+      confirmPermanentlyTitle: '永久删除',
+      confirmPermanently: '确定永久删除「{name}」吗？此操作不可恢复，将同时删除文件与标注。',
+      moved: '已移入垃圾箱',
+      restored: '已恢复「{name}」',
+      restoreFailed: '恢复图片失败',
+      deleted: '已永久删除',
+      deleteFailed: '永久删除失败'
+    },
+    camera: {
+      captureAndUpload: '摄像头拍摄并上传',
+      starting: '正在启动摄像头…',
+      takePhotoAndUpload: '拍照并上传',
+      notSupported: '当前浏览器不支持摄像头访问，请使用 Chrome/Edge。',
+      inUseTitle: '摄像头被占用',
+      inUse: '检测到摄像头正被其他程序使用，是否强制切换？这将关闭占用摄像头的应用（如 Windows 相机、Teams、Zoom 或 OBS）。',
+      forceSwitch: '强制切换',
+      forceSwitchFailed: '强制切换失败，请手动关闭占用摄像头的程序。',
+      accessFailed: '无法访问摄像头，请检查摄像头是否被占用。',
+      photoFailed: '拍照失败',
+      photoSuccess: '拍照并上传成功',
+      photoUploadFailed: '拍照上传失败，请重试。'
+    },
     dialogs: {
       upload: {
         title: '上传图片',
@@ -322,7 +363,23 @@ export default {
       deleteDatasetSuccess: '删除数据集成功',
       deleteDatasetFailed: '删除数据集失败，请重试',
       deleteImageSuccess: '删除图片成功',
-      deleteImageFailed: '删除图片失败，请重试'
+      deleteImageFailed: '删除图片失败，请重试',
+      loadImagesFailed: '加载图片失败，请重试',
+      uploadSuccess: '上传图片成功',
+      uploadFailed: '上传图片失败，请重试',
+      selectDataset: '请先选择一个数据集',
+      importProgress: '正在导入标注数据...',
+      exportProgress: '正在导出标注数据集...',
+      importComplete: '导入完成：{success} 个成功，{failed} 个失败',
+      importSuccess: '成功导入 {count} 条标注数据',
+      importFailed: '导入失败',
+      exportSuccess: '标注数据集导出成功',
+      exportFailed: '导出标注数据集失败，请重试',
+      importFileTooLarge: '文件大小不能超过 10 MB',
+      importFileType: '只支持 .xlsx 格式的文件',
+      importMissingField: '导入文件格式不正确，缺少必要的标注数据字段',
+      invalidAnnotationData: '标注数据格式不正确',
+      importItemFailed: '导入第 {index} 条标注数据失败：{error}'
     }
   },
   annotator: {
@@ -378,19 +435,24 @@ export default {
   },
   generateData: {
     title: '数据生成',
+    nameSuffix: '_生成',
     sourceDataset: {
       title: '源数据集信息',
       name: '数据集名称',
       imageCount: '{count} 张图片',
-      annotatedCount: '{count} 张已标注'
+      annotatedCount: '{count} 张已标注',
+      operation: '操作'
     },
     targetDataset: {
       title: '目标数据集',
       newOption: '创建新数据集',
       existingOption: '使用已有数据集',
       sourceOption: '使用源数据集',
+      type: '数据集类型',
+      select: '选择数据集',
       new: {
         name: {
+          label: '新数据集名称',
           required: '请输入数据集名称'
         }
       },
@@ -430,7 +492,11 @@ export default {
     progress: {
       title: '生成进度',
       cancel: '取消生成',
-      close: '关闭'
+      close: '关闭',
+      preparing: '正在准备数据...',
+      processed: '已处理 {count} / {total} 个操作',
+      generating: '正在生成: {name} ({count}/{total})',
+      creatingTarget: '正在创建目标数据集...'
     },
     configuration: {
       title: '{name} 参数配置',
@@ -495,12 +561,19 @@ export default {
     params: {
       title: '参数设置',
       confThreshold: '置信度阈值',
-      iouThreshold: 'IOU阈值'
+      iouThreshold: 'IOU阈值',
+      preprocessing: '前级（预处理）',
+      imageSize: '推理图像尺寸 (imgsz)',
+      postprocessing: '后级（后处理 / NMS）',
+      maxDetections: '最大检测数 (max_det)',
+      classAgnosticNms: '类别无关 NMS (agnostic)',
+      autoRetest: '自动重新推理（调参后自动重测）'
     },
     image: {
       title: '测试图像',
       select: '选择图像',
-      test: '测试模型'
+      test: '测试模型',
+      cameraCapture: '摄像头抓拍'
     },
     result: {
       title: '测试结果',
@@ -516,7 +589,10 @@ export default {
       noObjectsDetected: '未检测到任何对象',
       detectionCount: '检测到 {count} 个对象',
       testFailed: '测试失败: {error}',
-      testError: '测试出错: {error}'
+      testError: '测试出错: {error}',
+      captureSuccess: '抓拍成功',
+      captureFailed: '抓拍失败',
+      cameraCaptureFailed: '摄像头抓拍失败: {error}'
     }
   },
   alarmPanel: {
@@ -566,6 +642,8 @@ export default {
       title: '训练参数',
       params: {
         architecture: '模型架构',
+        device: '训练设备',
+        deviceAuto: '自动（检测 CUDA GPU）',
         epochs: '训练轮数',
         batchSize: '批次大小',
         imgSize: '图像尺寸',
@@ -586,6 +664,18 @@ export default {
         testModel: '测试模型',
         viewLogs: '查看日志',
         viewFiles: '查看文件'
+      },
+      status: {
+        notStarted: '未开始',
+        training: '训练中',
+        completed: '已完成',
+        failed: '失败',
+        trainingWithDots: '训练中{dots}'
+      },
+      timeUnits: {
+        hours: '{count}小时',
+        minutes: '{count}分钟',
+        seconds: '{count}秒'
       }
     },
     progress: {
@@ -609,6 +699,17 @@ export default {
       download: '下载文件',
       preview: '预览文件',
       empty: '暂无文件',
+      directory: '目录',
+      previewImageAlt: '文件预览',
+      unableToLoadContent: '无法加载文件内容：{name}',
+      upLevel: '上级目录',
+      previewDialog: {
+        unsupported: '此文件类型暂不支持预览',
+        actions: {
+          download: '下载',
+          close: '关闭'
+        }
+      },
       actions: {
         root: '返回根目录'
       }
@@ -638,7 +739,13 @@ export default {
       copyModelIdFailed: '复制模型ID失败',
       copyLogs: '已复制日志',
       copyLogsFailed: '复制日志失败',
-      downloadStarted: '开始下载 {name}'
+      downloadStarted: '开始下载 {name}',
+      trainingStopped: '训练已停止',
+      stopTrainingFailed: '停止训练失败',
+      exportSuccess: '模型导出成功：{path}',
+      exportFailed: '导出模型失败：{error}',
+      loadModelsFailed: '加载模型列表失败',
+      loadFilesFailed: '获取模型文件列表失败'
     },
     status: {
       empty: '请选择一个模型',
@@ -765,7 +872,8 @@ export default {
       processFailed: '处理失败',
       unknownError: '未知错误',
       batchUpload: '批量上传',
-      cameraStreamFailed: '相机流连接失败，请检查相机状态'
+      cameraStreamFailed: '相机流连接失败，请检查相机状态',
+      cameraError: '相机错误: {error}'
     },
     status: {
       online: '在线',
@@ -787,6 +895,7 @@ export default {
       noCamera: '无可用相机，请上传图片',
       uploadedImage: '已上传图片，等待处理',
       videoStream: '视频流',
+      streamStatus: '视频流状态:',
       streaming: '正在监控',
       stopped: '已停止',
       useUploadedImage: '使用此图片处理',
@@ -794,7 +903,23 @@ export default {
       capture: '拍照',
       uploadImage: '上传图片',
       stopMonitoring: '停止监控',
-      startMonitoring: '开始监控'
+      startMonitoring: '开始监控',
+      messages: {
+        noStreamUrl: '未提供视频流地址',
+        videoElementMissing: '未找到视频元素',
+        processingWait: '正在处理中，请等待完成',
+        cameraNotReady: '摄像头未就绪',
+        captureFailed: '捕获图像失败',
+        noUploadedImage: '没有上传的图片',
+        readyForProcessing: '图片准备好进行处理',
+        imageOnly: '请只上传图片文件',
+        preparingImages: '正在准备处理 {count} 张图片',
+        imageReadFailed: '图片读取失败',
+        unknownError: '未知错误',
+        unableToReadImage: '无法读取图片数据',
+        batchFailed: '批量处理图片失败',
+        uploadFailed: '处理上传文件失败'
+      }
     }
   },
   cv: {
@@ -839,7 +964,10 @@ export default {
       },
       validation: {
         nameRequired: '操作名称不能为空',
-        invalidCode: '代码格式不正确'
+        invalidCode: '代码格式不正确',
+        fileSizeLimit: '文件大小不能超过 10MB',
+        fileTypeError: '只支持 .xlsx 格式的文件',
+        missingField: '缺少必需字段: {field}'
       },
       importExport: {
         importErrorDetails: '导入错误详情',
@@ -978,7 +1106,8 @@ export default {
         testPanelError: '无法打开测试面板：流水线不存在',
         jsonParseError: 'JSON解析失败'
       },
-      pipelineEditor: {
+    },
+    pipelineEditor: {
         title: {
           new: '新建流水线',
           edit: '编辑流水线'
@@ -996,6 +1125,33 @@ export default {
         },
         nodeToolbox: {
           title: '节点工具箱'
+        },
+        nodeTypes: {
+          start: '开始',
+          end: '结束',
+          operation: '操作',
+          parallel: '并行',
+          merge: '合并',
+          condition: '条件',
+          unknown: '未知'
+        },
+        parameters: {
+          inputTitle: '输入参数配置',
+          outputTitle: '输出参数配置',
+          item: '参数 {index}',
+          addInput: '添加输入参数',
+          addOutput: '添加输出参数',
+          mapOutput: '映射到节点输出',
+          noMatchingOutput: '没有找到匹配类型的节点输出',
+          noTrainedModels: '没有找到已训练的模型，请先训练模型',
+          noDescription: '无描述',
+          pipelineInput: '流水线输入: {name}',
+          nodeOutput: '{node} 输出: {name}',
+          valueSource: '值来源',
+          customValue: '自定义值',
+          customValueJson: '自定义值 (JSON格式)',
+          condition: '条件表达式',
+          conditionHint: '使用 JavaScript 表达式，例如: input.value > 10'
         },
         nodeProperties: {
           title: '节点属性',
@@ -1016,15 +1172,69 @@ export default {
           redo: '重做 (Ctrl+Y)',
           delete: '删除选中元素 (Delete)',
           clear: '清空画布',
+          clearConfirmTitle: '确认清空',
+          clearConfirmMessage: '确定要清空流水线设计吗？此操作不可恢复。',
           center: '居中视图',
           zoomIn: '放大',
-          zoomOut: '缩小'
+          zoomOut: '缩小',
+          yes: '是',
+          no: '否'
         },
         notifications: {
           cannotDeleteStartEnd: '不能删除开始和结束节点',
-          initFailed: '初始化流水线设计器失败'
+          initFailed: '初始化流水线设计器失败',
+          operationLoadFailed: '加载操作详情失败',
+          operationLoadError: '获取操作详情失败',
+          operationNotSelected: '操作节点“{name}”尚未选择操作',
+          invalidOperationInputCount: '操作节点只能有一个入度',
+          invalidOperationOutputCount: '操作节点只能有一个出度',
+          invalidConditionInputCount: '条件节点只能有一个入度',
+          invalidConditionOutputCount: '条件节点只能有两个出度',
+          invalidParallelInputCount: '并行节点只能有一个入度，可以有多个出度',
+          invalidMergeOutputCount: '合并节点只能有一个出度，可以有多个入度',
+          invalidStartEdges: '开始节点只能有出度，不能有入度',
+          invalidEndEdges: '结束节点只能有入度，不能有出度',
+          invalidCanvas: '初始化画布失败',
+          operationOnlyEdge: '操作节点只能有一个入度',
+          operationOnlyOutgoingEdge: '操作节点只能有一个出度'
         }
-      }
+      },
+    pipelineTestPanel: {
+        title: '流水线测试',
+        actions: {
+          run: '运行',
+          close: '关闭',
+          clearLogs: '清空日志'
+        },
+        input: {
+          title: '输入参数',
+          required: '必填项',
+          cameraCapture: '摄像头抓拍',
+          jsonFormat: ' (JSON格式)',
+          invalidJson: '请输入有效的JSON格式'
+        },
+        output: {
+          title: '输出结果',
+          noData: '无数据',
+          imagePreview: '图像数据预览',
+          image: '[图像数据]'
+        },
+        log: {
+          title: '执行日志',
+          empty: '尚无执行日志，请运行流水线'
+        },
+        notifications: {
+          captureSuccess: '摄像头抓拍成功',
+          captureNoImage: '抓拍失败：未获取到图片',
+          captureFailed: '抓拍失败: {error}',
+          required: '{name} 是必填项',
+          invalidJson: '{name} 的值不是有效的 JSON 格式',
+          ready: '准备执行流水线',
+          inputsReady: '输入参数准备完成: {names}',
+          output: '输出参数 {name}: {value}',
+          success: '流水线执行成功',
+          failed: '执行失败: {error}'
+        }
     },
     operationTestPanel: {
       title: '操作测试',
@@ -1042,6 +1252,13 @@ export default {
       validation: {
         required: '必填项',
         invalidJson: '请输入有效的JSON格式'
+      },
+      notifications: {
+        required: '{name} 是必填项',
+        invalidJson: '{name} 的值不是有效的 JSON 格式',
+        saveFirst: '请先保存操作',
+        success: '测试运行成功',
+        failed: '测试运行失败'
       }
     }
   }

@@ -23,7 +23,7 @@
       
       <!-- 显示上传的图片 -->
       <div v-if="uploadedImage" class="uploaded-image-preview">
-        <img :src="uploadedImage" alt="上传的图片" class="uploaded-image" />
+        <img :src="uploadedImage" :alt="t('camera.capture.uploadedImage')" class="uploaded-image" />
         <div class="uploaded-image-info">
           <q-badge color="secondary">{{ t('camera.capture.uploadedImage') }}</q-badge>
         </div>
@@ -60,6 +60,7 @@
             icon="cloud_upload"
             :label="t('camera.capture.uploadImage')"
             color="secondary"
+            data-action="upload-image"
             @click="triggerFileUpload"
           />
         </template>
@@ -71,6 +72,7 @@
             :label="t('camera.capture.uploadImage')"
             color="primary"
             class="full-width"
+            data-action="upload-image"
             @click="triggerFileUpload"
           />
         </template>
@@ -95,6 +97,7 @@
           :label="t('camera.capture.useUploadedImage')"
           color="primary"
           class="full-width"
+          data-action="process-uploaded-image"
           @click="useUploadedImage"
         />
         <q-btn
@@ -239,11 +242,11 @@ const handleStreamError = (event: Event) => {
   // 正常错误处理
   isLoading.value = false
   isStreaming.value = false
-  streamError.value = '加载视频流失败'
+  streamError.value = t('camera.capture.error')
   
   // 发送错误事件，包含更多信息
   emit('stream-error', {
-    message: '加载视频流失败',
+    message: t('camera.capture.error'),
     url: expectedUrl,
     currentSrc,
     timestamp: new Date().toISOString()
@@ -275,7 +278,7 @@ const toggleStream = () => {
     if (!props.streamUrl) {
       $q.notify({
         type: 'warning',
-        message: '未提供视频流地址',
+        message: t('camera.capture.messages.noStreamUrl'),
         position: 'top'
       })
       return
@@ -303,10 +306,10 @@ const startStream = () => {
   if (!props.streamUrl || props.streamUrl.trim() === '') {
     isLoading.value = false
     isStreaming.value = false
-    streamError.value = '未提供视频流地址'
+    streamError.value = t('camera.capture.messages.noStreamUrl')
     
     console.log('未提供视频流地址或地址为空')
-    emit('error', { message: '未提供视频流地址' })
+    emit('error', { message: t('camera.capture.messages.noStreamUrl') })
     emit('status-change', 'error')
     return
   }
@@ -327,8 +330,8 @@ const startStream = () => {
   } else {
     console.log('视频元素未找到')
     isLoading.value = false
-    streamError.value = '视频元素未找到'
-    emit('error', { message: '视频元素未找到' })
+    streamError.value = t('camera.capture.messages.videoElementMissing')
+    emit('error', { message: t('camera.capture.messages.videoElementMissing') })
     emit('status-change', 'error')
   }
 }
@@ -360,7 +363,7 @@ const captureImage = () => {
   if (props.isProcessing) {
     $q.notify({
       type: 'warning',
-      message: '正在处理中，请等待完成',
+      message: t('camera.capture.messages.processingWait'),
       position: 'top'
     })
     return
@@ -369,7 +372,7 @@ const captureImage = () => {
   if (!isStreaming.value && !uploadedImage.value) {
     $q.notify({
       type: 'warning',
-      message: '摄像头未就绪',
+      message: t('camera.capture.messages.cameraNotReady'),
       position: 'top'
     })
     return
@@ -384,7 +387,7 @@ const captureImage = () => {
   } catch (error) {
     console.error('捕获图像失败:', error)
     emit('error', { 
-      message: '捕获图像失败',
+      message: t('camera.capture.messages.captureFailed'),
       error: error instanceof Error ? error.message : String(error)
     })
   }
@@ -402,7 +405,7 @@ const useUploadedImage = () => {
   if (!uploadedImage.value) {
     $q.notify({
       type: 'warning',
-      message: '没有上传的图片',
+      message: t('camera.capture.messages.noUploadedImage'),
       position: 'top'
     })
     return
@@ -422,7 +425,7 @@ const useUploadedImage = () => {
   
   $q.notify({
     type: 'positive',
-    message: '图片准备好进行处理',
+    message: t('camera.capture.messages.readyForProcessing'),
     position: 'top'
   })
 }
@@ -432,7 +435,7 @@ const handleFileUpload = (event: Event) => {
   if (props.isProcessing) {
     $q.notify({
       type: 'warning',
-      message: '正在处理中，请等待完成',
+      message: t('camera.capture.messages.processingWait'),
       position: 'top'
     })
     return
@@ -448,7 +451,7 @@ const handleFileUpload = (event: Event) => {
   if (invalidFiles.length > 0) {
     $q.notify({
       type: 'negative',
-      message: '请只上传图片文件',
+      message: t('camera.capture.messages.imageOnly'),
       position: 'top'
     })
     return
@@ -458,7 +461,7 @@ const handleFileUpload = (event: Event) => {
   if (files.length > 1) {
     $q.notify({
       type: 'info',
-      message: `正在准备处理 ${files.length} 张图片`,
+      message: t('camera.capture.messages.preparingImages', { count: files.length }),
       position: 'top'
     })
   }
@@ -498,9 +501,9 @@ const handleFileUpload = (event: Event) => {
     
     reader.onerror = () => {
       emit('error', { 
-        message: '图片读取失败',
+        message: t('camera.capture.messages.imageReadFailed'),
         fileName: file.name,
-        error: reader.error ? reader.error.message : '未知错误'
+        error: reader.error ? reader.error.message : t('camera.capture.messages.unknownError')
       })
     }
     
@@ -524,7 +527,7 @@ const handleFileUpload = (event: Event) => {
               if (e.target && typeof e.target.result === 'string') {
                 resolve(e.target.result)
               } else {
-                reject(new Error('无法读取图片数据'))
+                reject(new Error(t('camera.capture.messages.unableToReadImage')))
               }
             }
             reader.onerror = () => reject(reader.error)
@@ -562,7 +565,7 @@ const handleFileUpload = (event: Event) => {
       processFilesSequentially().catch(error => {
         console.error('批量处理图片失败:', error)
         emit('error', { 
-          message: '批量处理图片失败',
+          message: t('camera.capture.messages.batchFailed'),
           error: error instanceof Error ? error.message : String(error)
         })
       })
@@ -570,7 +573,7 @@ const handleFileUpload = (event: Event) => {
   } catch (error) {
     console.error('处理上传文件失败:', error)
     emit('error', { 
-      message: '处理上传文件失败',
+      message: t('camera.capture.messages.uploadFailed'),
       error: error instanceof Error ? error.message : String(error)
     })
   }

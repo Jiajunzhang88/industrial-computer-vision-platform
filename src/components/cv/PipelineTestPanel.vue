@@ -9,13 +9,13 @@
       <q-card-section class="test-panel-header row items-center q-py-sm">
         <div class="row items-center">
           <q-icon name="account_tree" size="24px" color="info" class="q-mr-sm" />
-          <div class="text-h6">流水线测试</div>
+          <div class="text-h6">{{ t('cv.pipelineTestPanel.title') }}</div>
         </div>
         <q-space />
         <q-btn-group flat>
-          <q-btn :loading="testing" color="primary" icon="play_arrow" label="运行" @click="runTest" />
+          <q-btn :loading="testing" color="primary" icon="play_arrow" :label="t('cv.pipelineTestPanel.actions.run')" @click="runTest" />
           <q-btn flat icon="close" @click="emit('update:modelValue', false)">
-            <q-tooltip>关闭</q-tooltip>
+            <q-tooltip>{{ t('cv.pipelineTestPanel.actions.close') }}</q-tooltip>
           </q-btn>
         </q-btn-group>
       </q-card-section>
@@ -28,7 +28,7 @@
               <q-card-section class="panel-section-header">
                 <div class="text-subtitle1">
                   <q-icon name="input" class="q-mr-sm" />
-                  输入参数
+                  {{ t('cv.pipelineTestPanel.input.title') }}
                 </div>
               </q-card-section>
               <q-separator />
@@ -50,7 +50,7 @@
                         :placeholder="param.description"
                         outlined
                         dense
-                        :rules="[val => !param.required || !!val || '必填项']"
+                        :rules="[val => !param.required || !!val || t('cv.pipelineTestPanel.input.required')]"
                       />
                     </template>
                     
@@ -61,7 +61,7 @@
                         :placeholder="param.description"
                         outlined
                         dense
-                        :rules="[val => !param.required || val !== null || '必填项']"
+                        :rules="[val => !param.required || val !== null || t('cv.pipelineTestPanel.input.required')]"
                       />
                     </template>
                     
@@ -80,7 +80,7 @@
                           dense
                           accept="image/*"
                           class="col"
-                          :rules="[val => !param.required || !!val || '必填项']"
+                          :rules="[val => !param.required || !!val || t('cv.pipelineTestPanel.input.required')]"
                         >
                           <template v-slot:prepend>
                             <q-icon name="attach_file" />
@@ -92,7 +92,7 @@
                         <q-btn
                           color="amber"
                           icon="camera_alt"
-                          label="摄像头抓拍"
+                          :label="t('cv.pipelineTestPanel.input.cameraCapture')"
                           dense
                           @click="snapFromCamera(param.name)"
                         />
@@ -109,17 +109,17 @@
                       <q-input
                         v-model="inputValues[param.name]"
                         type="textarea"
-                        :placeholder="param.description + ' (JSON格式)'"
+                        :placeholder="param.description + t('cv.pipelineTestPanel.input.jsonFormat')"
                         outlined
                         dense
                         :rules="[
-                          val => !param.required || !!val || '必填项',
+                          val => !param.required || !!val || t('cv.pipelineTestPanel.input.required'),
                           val => {
                             try {
                               if (val) JSON.parse(val)
                               return true
                             } catch (e) {
-                              return '请输入有效的JSON格式'
+                              return t('cv.pipelineTestPanel.input.invalidJson')
                             }
                           }
                         ]"
@@ -137,7 +137,7 @@
               <q-card-section class="panel-section-header">
                 <div class="text-subtitle1">
                   <q-icon name="output" class="q-mr-sm" />
-                  输出结果
+                  {{ t('cv.pipelineTestPanel.output.title') }}
                 </div>
               </q-card-section>
               <q-separator />
@@ -178,17 +178,17 @@
           <q-card-section class="panel-section-header">
             <div class="text-subtitle1">
               <q-icon name="subject" class="q-mr-sm" />
-              执行日志
+              {{ t('cv.pipelineTestPanel.log.title') }}
             </div>
             <q-space />
             <q-btn flat dense icon="delete_sweep" @click="clearLogs">
-              <q-tooltip>清空日志</q-tooltip>
+              <q-tooltip>{{ t('cv.pipelineTestPanel.actions.clearLogs') }}</q-tooltip>
             </q-btn>
           </q-card-section>
           <q-separator />
           <q-card-section class="panel-section-content log-content">
             <div v-if="logs.length === 0" class="text-grey text-center q-pa-md">
-              尚无执行日志，请运行流水线
+              {{ t('cv.pipelineTestPanel.log.empty') }}
             </div>
             <div v-for="(log, index) in logs" :key="index" class="log-entry" :class="getLogClass(log.type)">
               <span class="log-time">{{ log.time }}</span>
@@ -197,12 +197,12 @@
               <!-- 检测并显示 base64 图像 -->
               <template v-if="isBase64Image(log.message)">
                 <div class="log-message">
-                  <div>图像数据预览</div>
+                  <div>{{ t('cv.pipelineTestPanel.output.imagePreview') }}</div>
                   <q-img
                     :src="`data:image/png;base64,${log.message.replace(/^data:image\/[a-z]+;base64,/, '')}`"
                     class="log-image-preview"
                     style="max-height: 100px; max-width: 200px; cursor: zoom-in;"
-                    @click="openImagePreview(`data:image/png;base64,${log.message.replace(/^data:image\/[a-z]+;base64,/, '')}`, '日志图像')"
+                    @click="openImagePreview(`data:image/png;base64,${log.message.replace(/^data:image\/[a-z]+;base64,/, '')}`, t('cv.pipelineTestPanel.output.imagePreview'))"
                   />
                 </div>
               </template>
@@ -235,13 +235,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { Pipeline } from '@/services/pipeline'
 import { ParamType } from '@/services/cv_operation'
 import { pipelineService } from '@/services/pipeline'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 
 const $q = useQuasar()
+const { t } = useI18n()
 const props = defineProps<{
   modelValue: boolean
   pipeline: Partial<Pipeline>
@@ -310,12 +312,12 @@ const snapFromCamera = async (paramName: string) => {
     const imgB64 = data.image_base64 || data.frame || data.image
     if (imgB64) {
       inputValues.value[paramName] = imgB64.startsWith('data:') ? imgB64 : `data:image/jpeg;base64,${imgB64}`
-      $q.notify({ type: 'positive', message: '摄像头抓拍成功' })
+      $q.notify({ type: 'positive', message: t('cv.pipelineTestPanel.notifications.captureSuccess') })
     } else {
-      $q.notify({ type: 'negative', message: '抓拍失败：未获取到图片' })
+      $q.notify({ type: 'negative', message: t('cv.pipelineTestPanel.notifications.captureNoImage') })
     }
   } catch (e: any) {
-    $q.notify({ type: 'negative', message: `抓拍失败: ${e.message}` })
+    $q.notify({ type: 'negative', message: t('cv.pipelineTestPanel.notifications.captureFailed', { error: e.message }) })
   }
 }
 
@@ -336,10 +338,10 @@ const handleFileUpload = async (file: File): Promise<string> => {
 
 // 格式化输出值
 const formatOutputValue = (value: any, type: string) => {
-  if (value === null || value === undefined) return '无数据'
+  if (value === null || value === undefined) return t('cv.pipelineTestPanel.output.noData')
   
   if (type === ParamType.IMAGE) {
-    return `[图像数据]` // 图像已在上方显示
+    return t('cv.pipelineTestPanel.output.image')
   }
   
   if (typeof value === 'object') {
@@ -369,7 +371,7 @@ const validateInputs = (): boolean => {
     if (param.required && (inputValues.value[param.name] === undefined || inputValues.value[param.name] === '')) {
       $q.notify({
         type: 'negative',
-        message: `${param.name} 是必填项`
+        message: t('cv.pipelineTestPanel.notifications.required', { name: param.name })
       })
       return false
     }
@@ -403,7 +405,7 @@ const prepareParams = async (): Promise<Record<string, any>> => {
           try {
             value = JSON.parse(value)
           } catch (e) {
-            throw new Error(`${param.name} 的值不是有效的 JSON 格式`)
+            throw new Error(t('cv.pipelineTestPanel.notifications.invalidJson', { name: param.name }))
           }
         }
         break
@@ -454,12 +456,14 @@ const runTest = async () => {
   clearLogs()
   outputValues.value = {}
   
-  addLog('INFO', '准备执行流水线')
+  addLog('INFO', t('cv.pipelineTestPanel.notifications.ready'))
   
   try {
     // 准备参数
     const params = await prepareParams()
-    addLog('INFO', `输入参数准备完成: ${Object.keys(params).join(', ')}`)
+    addLog('INFO', t('cv.pipelineTestPanel.notifications.inputsReady', {
+      names: Object.keys(params).join(', ')
+    }))
     
     // 调用API，测试时启用日志
     const result = await pipelineService.applyPipeline(props.pipeline.id!, {
@@ -481,14 +485,20 @@ const runTest = async () => {
       
       // 检查是否是 base64 图像，如果是则添加图像日志
       if (typeof result.outputParams[key] === 'string' && isBase64Image(result.outputParams[key])) {
-        addLog('IMAGE', `${key} 图像输出`, result.outputParams[key])
+        addLog('IMAGE', t('cv.pipelineTestPanel.notifications.output', {
+          name: key,
+          value: t('cv.pipelineTestPanel.output.image')
+        }), result.outputParams[key])
       } else {
         // 对于非图像输出，记录键值对
-        addLog('INFO', `输出参数 ${key}: ${JSON.stringify(result.outputParams[key]).substring(0, 100)}${JSON.stringify(result.outputParams[key]).length > 100 ? '...' : ''}`)
+        addLog('INFO', t('cv.pipelineTestPanel.notifications.output', {
+          name: key,
+          value: `${JSON.stringify(result.outputParams[key]).substring(0, 100)}${JSON.stringify(result.outputParams[key]).length > 100 ? '...' : ''}`
+        }))
       }
     }
     
-    addLog('SUCCESS', '流水线执行成功')
+    addLog('SUCCESS', t('cv.pipelineTestPanel.notifications.success'))
   } catch (error: any) {
     console.error('Pipeline execution error:', error)
     
@@ -499,7 +509,9 @@ const runTest = async () => {
       })
     }
     
-    addLog('ERROR', `执行失败: ${error.message || '未知错误'}`)
+    addLog('ERROR', t('cv.pipelineTestPanel.notifications.failed', {
+      error: error.message || t('common.unknownError')
+    }))
   } finally {
     testing.value = false
   }

@@ -57,9 +57,9 @@
                     <q-icon name="delete_outline" color="grey-6" />
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label>垃圾箱</q-item-label>
+                    <q-item-label>{{ t('annotation.trash.title') }}</q-item-label>
                     <q-item-label caption class="dataset-info">
-                      <span>{{ trashImages.length }} 张图片</span>
+                      <span>{{ t('annotation.trash.imageCount', { count: trashImages.length }) }}</span>
                     </q-item-label>
                   </q-item-section>
                 </q-item>
@@ -86,7 +86,7 @@
 
                     <!-- 摄像头拍摄按钮 -->
                     <q-btn flat round icon="photo_camera" @click="openCameraDialog">
-                      <q-tooltip>摄像头拍摄并上传</q-tooltip>
+                      <q-tooltip>{{ t('annotation.camera.captureAndUpload') }}</q-tooltip>
                     </q-btn>
 
                     <!-- 上传图片按钮 -->
@@ -275,7 +275,7 @@
     <q-dialog v-model="cameraDialog" persistent>
       <q-card style="min-width: 480px; max-width: 92vw">
         <q-card-section class="row items-center">
-          <div class="text-h6">摄像头拍摄</div>
+          <div class="text-h6">{{ t('annotation.camera.captureAndUpload') }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup @click="stopCamera" />
         </q-card-section>
@@ -284,13 +284,13 @@
           <video ref="cameraVideo" autoplay playsinline class="camera-preview"></video>
           <div v-if="cameraError" class="text-negative q-mt-sm">{{ cameraError }}</div>
           <div v-if="!cameraError && !cameraReady" class="text-grey-7 q-mt-sm">
-            正在启动摄像头…
+            {{ t('annotation.camera.starting') }}
           </div>
         </q-card-section>
 
         <q-card-actions align="center" class="q-pb-md">
-          <q-btn outline icon="close" label="取消" color="primary" v-close-popup @click="stopCamera" />
-          <q-btn unelevated icon="photo_camera" label="拍照并上传" color="primary"
+          <q-btn outline icon="close" :label="t('common.cancel')" color="primary" v-close-popup @click="stopCamera" />
+          <q-btn unelevated icon="photo_camera" :label="t('annotation.camera.takePhotoAndUpload')" color="primary"
             @click="takePhoto" :loading="capturing" :disable="!cameraReady" />
         </q-card-actions>
       </q-card>
@@ -368,7 +368,7 @@
     <q-dialog v-model="trashDialog" style="max-width: 90vw">
       <q-card style="min-width: 680px; max-width: 90vw">
         <q-card-section class="row items-center">
-          <div class="text-h6">垃圾箱</div>
+          <div class="text-h6">{{ t('annotation.trash.title') }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
@@ -376,8 +376,8 @@
         <q-card-section v-if="trashImages.length === 0" class="flex flex-center q-pa-xl text-grey-6">
           <div class="text-center">
             <q-icon name="delete_outline" size="48px" color="grey-5" />
-            <div class="q-mt-sm">垃圾箱为空</div>
-            <div class="text-caption q-mt-xs">删除的图片会先到这里，可随时恢复</div>
+            <div class="q-mt-sm">{{ t('annotation.trash.empty') }}</div>
+            <div class="text-caption q-mt-xs">{{ t('annotation.trash.hint') }}</div>
           </div>
         </q-card-section>
 
@@ -394,9 +394,9 @@
                     {{ img.datasetName }}
                   </div>
                   <div class="row q-mt-xs">
-                    <q-btn dense flat size="sm" color="primary" icon="restore" label="恢复"
+                    <q-btn dense flat size="sm" color="primary" icon="restore" :label="t('annotation.trash.restore')"
                       @click="restoreFromTrash(img)" :loading="restoringId === img.id" />
-                    <q-btn dense flat size="sm" color="negative" icon="delete_forever" label="永久删除"
+                    <q-btn dense flat size="sm" color="negative" icon="delete_forever" :label="t('annotation.trash.deletePermanently')"
                       @click="purgeFromTrash(img)" :loading="purgingId === img.id" />
                   </div>
                 </div>
@@ -615,7 +615,7 @@ const selectDataset = async (dataset: Dataset) => {
     console.error('选择数据集失败:', error)
     $q.notify({
       type: 'negative',
-      message: '加载图片失败，请重试',
+      message: t('annotation.notifications.loadImagesFailed'),
       position: 'top'
     })
   }
@@ -646,14 +646,14 @@ const handleUploadImages = async () => {
 
     $q.notify({
       type: 'positive',
-      message: '上传图片成功',
+      message: t('annotation.notifications.uploadSuccess'),
       position: 'top'
     })
   } catch (error) {
     console.error('上传图片失败:', error)
     $q.notify({
       type: 'negative',
-      message: '上传图片失败，请重试',
+      message: t('annotation.notifications.uploadFailed'),
       position: 'top'
     })
   } finally {
@@ -664,7 +664,7 @@ const handleUploadImages = async () => {
 // 摄像头拍摄
 const startCameraStream = async () => {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    cameraError.value = '当前浏览器不支持摄像头访问，请使用 Chrome/Edge'
+    cameraError.value = t('annotation.camera.notSupported')
     return false
   }
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -691,7 +691,7 @@ const isDeviceInUseError = (error: any) => {
 
 const openCameraDialog = async () => {
   if (!currentDataset.value) {
-    $q.notify({ type: 'warning', message: '请先选择一个数据集', position: 'top' })
+    $q.notify({ type: 'warning', message: t('annotation.notifications.selectDataset'), position: 'top' })
     return
   }
   cameraError.value = ''
@@ -703,13 +703,13 @@ const openCameraDialog = async () => {
   } catch (error) {
     console.error('启动摄像头失败:', error)
     if (isDeviceInUseError(error)) {
-      cameraError.value = '摄像头被其他程序占用'
+      cameraError.value = t('annotation.camera.inUseTitle')
       $q.dialog({
-        title: '摄像头被占用',
-        message: '检测到摄像头正被其他程序使用，是否强制切换过来？\n（将自动关闭占用摄像头的应用：Windows 相机、Teams、Zoom、OBS 等）',
+        title: t('annotation.camera.inUseTitle'),
+        message: t('annotation.camera.inUse'),
         persistent: true,
-        ok: { label: '强制切换', color: 'negative' },
-        cancel: { label: '取消', flat: true }
+        ok: { label: t('annotation.camera.forceSwitch'), color: 'negative' },
+        cancel: { label: t('common.cancel'), flat: true }
       }).onOk(async () => {
         try {
           await annotationService.forceReleaseCamera()
@@ -718,11 +718,11 @@ const openCameraDialog = async () => {
           await startCameraStream()
         } catch (e) {
           console.error('强制切换摄像头失败:', e)
-          cameraError.value = '强制切换失败：' + ((e as any)?.message || '请手动关闭占用摄像头的程序')
+          cameraError.value = t('annotation.camera.forceSwitchFailed')
         }
       })
     } else {
-      cameraError.value = '无法访问摄像头：' + ((error as any)?.message || '请检查摄像头是否被占用')
+      cameraError.value = t('annotation.camera.accessFailed')
     }
   }
 }
@@ -748,7 +748,7 @@ const takePhoto = async () => {
     canvas.height = video.videoHeight || 480
     canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
     const blob: Blob = await new Promise((resolve, reject) => {
-      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('拍照失败'))), 'image/jpeg', 0.92)
+      canvas.toBlob(b => (b ? resolve(b) : reject(new Error(t('annotation.camera.photoFailed')))), 'image/jpeg', 0.92)
     })
     const file = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' })
     const newImages = await annotationService.uploadImages(currentDataset.value.id, [file])
@@ -762,10 +762,10 @@ const takePhoto = async () => {
       }
     }
 
-    $q.notify({ type: 'positive', message: '拍照并上传成功', position: 'top' })
+    $q.notify({ type: 'positive', message: t('annotation.camera.photoSuccess'), position: 'top' })
   } catch (error) {
     console.error('拍照上传失败:', error)
-    $q.notify({ type: 'negative', message: '拍照上传失败，请重试', position: 'top' })
+    $q.notify({ type: 'negative', message: t('annotation.camera.photoUploadFailed'), position: 'top' })
   } finally {
     capturing.value = false
   }
@@ -830,16 +830,16 @@ const selectImage = async (image: Image) => {
 // 删除图片（软删除，移入垃圾箱）
 const deleteImage = (image: Image) => {
   $q.dialog({
-    title: '删除图片',
-    message: `确定删除「${image.filename}」吗？\n删除后将移入垃圾箱，可随时恢复。`,
+    title: t('annotation.trash.confirmDeleteTitle'),
+    message: t('annotation.trash.confirmDelete', { name: image.filename }),
     persistent: true,
     ok: {
-      label: '删除',
+      label: t('common.delete'),
       color: 'negative',
       flat: true
     },
     cancel: {
-      label: '取消',
+      label: t('common.cancel'),
       flat: true
     }
   }).onOk(async () => {
@@ -865,7 +865,7 @@ const deleteImage = (image: Image) => {
 
       $q.notify({
         type: 'positive',
-        message: '已移入垃圾箱',
+        message: t('annotation.trash.moved'),
         position: 'top'
       })
     } catch (error) {
@@ -934,14 +934,14 @@ const restoreFromTrash = async (img: TrashImage) => {
 
     $q.notify({
       type: 'positive',
-      message: `已恢复「${img.filename}」`,
+      message: t('annotation.trash.restored', { name: img.filename }),
       position: 'top'
     })
   } catch (error) {
     console.error('恢复图片失败:', error)
     $q.notify({
       type: 'negative',
-      message: '恢复图片失败，请重试',
+      message: t('annotation.trash.restoreFailed'),
       position: 'top'
     })
   } finally {
@@ -951,16 +951,16 @@ const restoreFromTrash = async (img: TrashImage) => {
 
 const purgeFromTrash = (img: TrashImage) => {
   $q.dialog({
-    title: '永久删除',
-    message: `确定永久删除「${img.filename}」吗？\n此操作不可恢复，将同时删除文件与标注。`,
+    title: t('annotation.trash.confirmPermanentlyTitle'),
+    message: t('annotation.trash.confirmPermanently', { name: img.filename }),
     persistent: true,
     ok: {
-      label: '永久删除',
+      label: t('annotation.trash.deletePermanently'),
       color: 'negative',
       flat: true
     },
     cancel: {
-      label: '取消',
+      label: t('common.cancel'),
       flat: true
     }
   }).onOk(async () => {
@@ -970,14 +970,14 @@ const purgeFromTrash = (img: TrashImage) => {
       trashImages.value = trashImages.value.filter(i => i.id !== img.id)
       $q.notify({
         type: 'positive',
-        message: '已永久删除',
+        message: t('annotation.trash.deleted'),
         position: 'top'
       })
     } catch (error) {
       console.error('永久删除失败:', error)
       $q.notify({
         type: 'negative',
-        message: '永久删除失败，请重试',
+        message: t('annotation.trash.deleteFailed'),
         position: 'top'
       })
     } finally {
@@ -1035,7 +1035,7 @@ const handleFileImport = async (event: Event) => {
   if (!currentDataset.value) {
     $q.notify({
       type: 'warning',
-      message: '请先选择一个数据集',
+      message: t('annotation.notifications.selectDataset'),
       position: 'top'
     })
     return
@@ -1044,7 +1044,7 @@ const handleFileImport = async (event: Event) => {
   // 显示加载状态
   let destroyLoading = $q.notify({
     type: 'ongoing',
-    message: '正在导入标注数据...',
+    message: t('annotation.notifications.importProgress'),
   })
 
   try {
@@ -1052,12 +1052,12 @@ const handleFileImport = async (event: Event) => {
 
     // 检查文件大小
     if (file.size > 10 * 1024 * 1024) { // 10MB
-      throw new Error('文件大小不能超过10MB')
+      throw new Error(t('annotation.notifications.importFileTooLarge'))
     }
 
     // 检查文件类型
     if (!file.name.endsWith('.xlsx')) {
-      throw new Error('只支持.xlsx格式的文件')
+      throw new Error(t('annotation.notifications.importFileType'))
     }
 
     // 读取Excel文件
@@ -1067,7 +1067,7 @@ const handleFileImport = async (event: Event) => {
 
     // 验证数据格式
     if (!data.length || !data[0]['标注数据']) {
-      throw new Error('导入文件格式不正确，缺少必要的标注数据字段')
+      throw new Error(t('annotation.notifications.importMissingField'))
     }
 
     // 获取当前数据集的所有图片
@@ -1087,7 +1087,7 @@ const handleFileImport = async (event: Event) => {
 
         // 验证标注数据格式
         if (!annotationData || !annotationData.annotations) {
-          throw new Error('标注数据格式不正确')
+          throw new Error(t('annotation.notifications.invalidAnnotationData'))
         }
 
         // 保存标注数据
@@ -1095,7 +1095,10 @@ const handleFileImport = async (event: Event) => {
         results.success++
       } catch (error) {
         results.failed++
-        results.errors.push(`导入第${i + 1}条标注数据失败: ${error instanceof Error ? error.message : '未知错误'}`)
+        results.errors.push(t('annotation.notifications.importItemFailed', {
+          index: i + 1,
+          error: error instanceof Error ? error.message : t('common.unknownError')
+        }))
       }
     }
 
@@ -1109,24 +1112,27 @@ const handleFileImport = async (event: Event) => {
     if (results.failed > 0) {
       $q.notify({
         type: 'warning',
-        message: `导入完成: ${results.success}个成功, ${results.failed}个失败`,
+        message: t('annotation.notifications.importComplete', {
+          success: results.success,
+          failed: results.failed
+        }),
         position: 'top',
         timeout: 5000
       })
 
       // 显示详细错误信息
       $q.dialog({
-        title: '导入错误详情',
+        title: t('annotation.notifications.importFailed'),
         message: results.errors.join('<br>'),
         html: true,
         ok: {
-          label: '确定'
+          label: t('common.confirm')
         }
       })
     } else {
       $q.notify({
         type: 'positive',
-        message: `成功导入 ${results.success} 个标注数据`,
+        message: t('annotation.notifications.importSuccess', { count: results.success }),
         position: 'top',
         timeout: 3000
       })
@@ -1135,7 +1141,7 @@ const handleFileImport = async (event: Event) => {
     console.error('导入失败:', error)
     $q.notify({
       type: 'negative',
-      message: error instanceof Error ? error.message : '导入失败',
+      message: error instanceof Error ? error.message : t('annotation.notifications.importFailed'),
       position: 'top',
       timeout: 5000
     })
@@ -1149,7 +1155,7 @@ const exportAnnotationDataset = async () => {
   if (!currentDataset.value) {
     $q.notify({
       type: 'warning',
-      message: '请先选择一个数据集',
+      message: t('annotation.notifications.selectDataset'),
       position: 'top'
     })
     return
@@ -1157,7 +1163,7 @@ const exportAnnotationDataset = async () => {
   // 显示加载状态
   let destroyLoading = $q.notify({
     type: 'ongoing',
-    message: '正在导出标注数据集...',
+    message: t('annotation.notifications.exportProgress'),
   })
 
   try {
@@ -1199,14 +1205,14 @@ const exportAnnotationDataset = async () => {
     URL.revokeObjectURL(url)
     $q.notify({
       type: 'positive',
-      message: '标注数据集导出成功',
+      message: t('annotation.notifications.exportSuccess'),
       position: 'top'
     })
   } catch (error) {
     console.error('导出标注数据集失败:', error)
     $q.notify({
       type: 'negative',
-      message: '导出标注数据集失败，请重试',
+      message: t('annotation.notifications.exportFailed'),
       position: 'top'
     })
   } finally {
@@ -1249,14 +1255,14 @@ const handleDelete = async () => {
 
       $q.notify({
         type: 'positive',
-        message: '删除图片成功',
+        message: t('annotation.notifications.deleteImageSuccess'),
         position: 'top'
       })
     } catch (error) {
       console.error('删除图片失败:', error)
       $q.notify({
         type: 'negative',
-        message: '删除图片失败，请重试',
+        message: t('annotation.notifications.deleteImageFailed'),
         position: 'top'
       })
     } finally {
@@ -1388,7 +1394,7 @@ const openGenerateDataDialog = () => {
   if (!currentDataset.value) {
     $q.notify({
       type: 'warning',
-      message: '请先选择一个数据集',
+      message: t('annotation.notifications.selectDataset'),
       position: 'top'
     })
     return

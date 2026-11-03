@@ -69,7 +69,7 @@
                     v-if="processedStreamUrl" 
                     :src="processedStreamUrl" 
                     class="processed-stream" 
-                    alt="处理后视频流"
+                    :alt="t('realtime.camera.processed')"
                     @error="handleProcessedStreamError"
                     @load="handleProcessedStreamLoaded"
                   />
@@ -1867,7 +1867,9 @@ const onCameraError = (error: any) => {
   console.error('相机错误:', error)
   $q.notify({
     type: 'negative',
-    message: `相机错误: ${error.message || '未知错误'}`,
+    message: t('realtime.notifications.cameraError', {
+      error: error.message || t('realtime.notifications.unknownError')
+    }),
     position: 'top'
   })
 }
@@ -1948,7 +1950,7 @@ const processImage = async () => {
     })
     const cameraEl = document.querySelector('.camera-capture')
     if (cameraEl) {
-      const uploadBtn = cameraEl.querySelector('button[label="上传图片"]')
+      const uploadBtn = cameraEl.querySelector('button[data-action="upload-image"]')
       if (uploadBtn) (uploadBtn as HTMLButtonElement).click()
     }
     return
@@ -1956,7 +1958,7 @@ const processImage = async () => {
 
   const cameraEl = document.querySelector('.camera-capture')
   if (cameraEl) {
-    const processBtn = cameraEl.querySelector('button[label="使用此图片处理"]')
+    const processBtn = cameraEl.querySelector('button[data-action="process-uploaded-image"]')
     if (processBtn) {
       (processBtn as HTMLButtonElement).click()
     } else {

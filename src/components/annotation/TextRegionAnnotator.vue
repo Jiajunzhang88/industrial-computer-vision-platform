@@ -108,12 +108,10 @@ let anno: any = null
 const annotationTypeConfig = {
   text_region: {
     tool: 'polygon',
-    label: '文本区域',
     color: '#2196f3'
   },
   wheel_text: {
     tool: 'rectangle',
-    label: '带字轮毂',
     color: '#ff9800'
   }
 }

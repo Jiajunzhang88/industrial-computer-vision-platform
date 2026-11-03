@@ -13,7 +13,7 @@
         <q-icon :name="route.meta.icon" size="24px" />
       </q-item-section>
       <q-item-section>
-        {{ route.meta.title }}
+        {{ t(route.meta.titleKey || route.meta.title) }}
       </q-item-section>
     </q-item>
   </q-list>
@@ -22,8 +22,10 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t } = useI18n()
 
 // 获取路由配置中的主要导航项
 const routes = computed(() => {

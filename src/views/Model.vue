@@ -53,7 +53,7 @@
                       icon="play_arrow" 
                       color="positive"
                       @click.stop="trainModel(model)"
-                      :title="t('model.list.actions.train')"
+                      :title="t('model.training.actions.startTraining')"
                     />
                     <q-btn 
                       flat 
@@ -124,7 +124,7 @@
                   :options="datasets"
                   option-value="id"
                   option-label="name"
-                  :label="t('model.training.params.dataset')"
+                  :label="t('model.dialogs.create.dataset')"
                   class="full-width"
                   disable
                 />
@@ -200,7 +200,7 @@
                   outlined
                   v-model="device"
                   :options="deviceOptions"
-                  :label="t('model.training.params.device') || '训练设备'"
+                  :label="t('model.training.params.device')"
                   class="full-width"
                   :disable="selectedModel.status === ModelStatus.TRAINING"
                 />
@@ -209,7 +209,7 @@
             <q-btn
               color="primary"
               icon="play_arrow"
-              :label="selectedModel.status === ModelStatus.TRAINING ? t('model.training.actions.training') : t('model.training.actions.startTraining')"
+              :label="selectedModel.status === ModelStatus.TRAINING ? t('model.training.status.training') : t('model.training.actions.startTraining')"
               class="q-mt-lg"
               @click="startTraining"
               :loading="selectedModel.status === ModelStatus.TRAINING"
@@ -219,7 +219,7 @@
               v-if="selectedModel.status === ModelStatus.TRAINING"
               color="negative"
               icon="stop"
-              label="停止训练"
+              :label="t('model.training.actions.stopTraining')"
               class="q-mt-lg q-ml-md"
               @click="stopTraining"
             />
@@ -294,9 +294,9 @@
                   </q-badge>
                 </div>
                 <div class="row q-gutter-xs">
-                  <q-btn flat dense icon="refresh" color="primary" @click="fetchModelLogs" :title="t('model.logs.actions.refresh')" />
-                  <q-btn flat dense icon="content_copy" color="primary" @click="copyLogs" :disable="logs.length === 0" :title="t('model.logs.actions.copy')" />
-                  <q-btn flat dense icon="vertical_align_bottom" color="primary" @click="scrollLogsToBottom" :disable="logs.length === 0" :title="t('model.logs.actions.scrollToBottom')" />
+                  <q-btn flat dense icon="refresh" color="primary" @click="fetchModelLogs" :title="t('model.logs.refresh')" />
+                  <q-btn flat dense icon="content_copy" color="primary" @click="copyLogs" :disable="logs.length === 0" :title="t('model.logs.copy')" />
+                  <q-btn flat dense icon="vertical_align_bottom" color="primary" @click="scrollLogsToBottom" :disable="logs.length === 0" :title="t('model.logs.scrollToBottom')" />
                 </div>
               </div>
               
@@ -321,7 +321,7 @@
                   </q-badge>
                 </div>
                 <div class="row q-gutter-xs">
-                  <q-btn flat dense icon="refresh" color="primary" @click="fetchModelFiles" :title="t('model.files.actions.refresh')" />
+                  <q-btn flat dense icon="refresh" color="primary" @click="fetchModelFiles" :title="t('model.files.refresh')" />
                   <q-btn flat dense icon="home" color="primary" @click="navigateToRoot" :title="t('model.files.actions.root')" />
                 </div>
               </div>
@@ -342,7 +342,7 @@
                     <q-icon name="arrow_upward" color="primary" />
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label>{{ t('model.files.actions.upLevel') }}</q-item-label>
+                    <q-item-label>{{ t('model.files.upLevel') }}</q-item-label>
                   </q-item-section>
                 </q-item>
                 
@@ -353,7 +353,7 @@
                   <q-item-section>
                     <q-item-label>{{ file.name }}</q-item-label>
                     <q-item-label caption>
-                      {{ file.isDir ? '目录' : formatFileSize(file.size) }} | {{ formatModifiedTime(file.modifiedTime) }}
+                      {{ file.isDir ? t('model.files.directory') : formatFileSize(file.size) }} | {{ formatModifiedTime(file.modifiedTime) }}
                     </q-item-label>
                   </q-item-section>
                   <q-item-section side v-if="!file.isDir && isPreviewable(file.name)">
@@ -383,20 +383,20 @@
               
               <q-card-section class="file-preview-container">
                 <div v-if="isImageFile(previewFile?.name)" class="image-preview">
-                  <img :src="previewUrl" alt="文件预览" style="max-width: 100%; max-height: 80vh;" />
+                  <img :src="previewUrl" :alt="t('model.files.previewImageAlt')" style="max-width: 100%; max-height: 80vh;" />
                 </div>
                 <div v-else-if="isTextFile(previewFile?.name)" class="text-preview">
                   <pre class="text-content">{{ previewContent }}</pre>
                 </div>
                 <div v-else class="unknown-preview">
                   <q-icon name="insert_drive_file" size="6rem" color="grey" />
-                  <div class="text-subtitle1 q-mt-md">{{ t('model.files.preview.unsupported') }}</div>
+                  <div class="text-subtitle1 q-mt-md">{{ t('model.files.previewDialog.unsupported') }}</div>
             </div>
           </q-card-section>
               
               <q-card-actions align="right">
-                <q-btn flat :label="t('model.files.preview.actions.download')" color="primary" @click="downloadSelectedFile()" icon="download" />
-                <q-btn flat :label="t('model.files.preview.actions.close')" color="primary" v-close-popup />
+                <q-btn flat :label="t('model.files.previewDialog.actions.download')" color="primary" @click="downloadSelectedFile()" icon="download" />
+                <q-btn flat :label="t('model.files.previewDialog.actions.close')" color="primary" v-close-popup />
               </q-card-actions>
         </q-card>
           </q-dialog>
@@ -409,13 +409,13 @@
               <q-icon name="model_training" size="5rem" color="grey-7" />
               <div class="text-h6 q-mt-md">
                 <template v-if="activeMode === 'test' && selectedModel?.status !== ModelStatus.COMPLETED">
-                  此模型未完成训练，无法进行测试
+                  {{ t('model.status.notCompleted') }}
                 </template>
                 <template v-else-if="activeMode === 'logs' && selectedModel?.status !== ModelStatus.TRAINING">
-                  模型当前未处于训练状态，没有训练日志
+                  {{ t('model.status.notTraining') }}
                 </template>
                 <template v-else>
-                  请选择功能或操作
+                  {{ t('model.status.selectFeature') }}
                 </template>
     </div>
             </q-card-section>
@@ -620,11 +620,11 @@ const imgSize = ref(640)
 const confThres = ref(0.25)
 const iouThres = ref(0.45)
 const device = ref('auto')
-const deviceOptions = [
-  { label: '自动（检测 CUDA GPU）', value: 'auto' },
+const deviceOptions = computed(() => [
+  { label: t('model.training.params.deviceAuto'), value: 'auto' },
   { label: 'CPU', value: 'cpu' },
   { label: 'GPU (CUDA)', value: 'cuda' }
-]
+])
 
 // 获取选中的数据集
 const selectedDataset = computed(() => {
@@ -651,13 +651,13 @@ const getArchitectureLabel = (arch: ModelArchitecture) => {
 const getStatusText = (status: ModelStatus) => {
   switch (status) {
     case ModelStatus.NOT_STARTED:
-      return '未开始'
+      return t('model.training.status.notStarted')
     case ModelStatus.TRAINING:
-      return '训练中'
+      return t('model.training.status.training')
     case ModelStatus.COMPLETED:
-      return '已完成'
+      return t('model.training.status.completed')
     case ModelStatus.FAILED:
-      return '失败'
+      return t('model.training.status.failed')
     default:
       return status
   }
@@ -672,13 +672,13 @@ const getProgressText = () => {
   } else if (selectedModel.value.status === ModelStatus.COMPLETED) {
     return '100%'
   } else if (selectedModel.value.status === ModelStatus.FAILED) {
-    return '失败'
+    return t('model.training.status.failed')
   } else if (selectedModel.value.metrics?.progress !== undefined) {
     return `${Math.round(selectedModel.value.metrics.progress * 100)}%`
   } else {
     // 更友好的进行中提示
     const dots = Math.floor(Date.now() / 500) % 4; // 动态显示点的数量
-    return `训练中${''.padEnd(dots, '.')}`;
+    return t('model.training.status.trainingWithDots', { dots: ''.padEnd(dots, '.') })
   }
 }
 
@@ -721,9 +721,9 @@ const stopTraining = async () => {
   try {
     await modelService.stopTraining(selectedModel.value.id)
     await refreshModel(selectedModel.value.id)
-    $q.notify({ type: 'warning', message: '训练已停止', position: 'top' })
+    $q.notify({ type: 'warning', message: t('model.notifications.trainingStopped'), position: 'top' })
   } catch (e) {
-    $q.notify({ type: 'negative', message: '停止训练失败', position: 'top' })
+    $q.notify({ type: 'negative', message: t('model.notifications.stopTrainingFailed'), position: 'top' })
   }
 }
 
@@ -896,13 +896,13 @@ const exportModel = async (model: Model) => {
     
     $q.notify({
       type: 'positive',
-      message: `模型导出成功: ${result.file_path}`,
+      message: t('model.notifications.exportSuccess', { path: result.file_path }),
       position: 'top',
     })
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: `导出模型失败: ${(error as Error).message}`,
+      message: t('model.notifications.exportFailed', { error: (error as Error).message }),
       position: 'top',
     })
   }
@@ -1007,9 +1007,9 @@ const formatDuration = (seconds: number) => {
   const secs = Math.floor(seconds % 60)
   
   const parts = []
-  if (hours > 0) parts.push(`${hours}小时`)
-  if (minutes > 0) parts.push(`${minutes}分钟`)
-  if (secs > 0 || parts.length === 0) parts.push(`${secs}秒`)
+  if (hours > 0) parts.push(t('model.training.timeUnits.hours', { count: hours }))
+  if (minutes > 0) parts.push(t('model.training.timeUnits.minutes', { count: minutes }))
+  if (secs > 0 || parts.length === 0) parts.push(t('model.training.timeUnits.seconds', { count: secs }))
   
   return parts.join(' ')
 }
@@ -1199,7 +1199,7 @@ const updateTerminal = (newLogs: string[]) => {
   
   // 添加一行分隔
   if ((lastEpochLine || lastBatchLine || lastProgressLine) && otherLines.length > 0 && terminal) {
-    terminal.writeln('\r\n\x1b[90m-------------- 训练进度 --------------\x1b[0m\r\n')
+    terminal.writeln(`\r\n\x1b[90m-------------- ${t('model.progress.title')} --------------\x1b[0m\r\n`)
   }
   
   // 然后显示进度信息
@@ -1299,7 +1299,7 @@ onMounted(async () => {
     console.error('Failed to load models:', error)
     $q.notify({
       type: 'negative',
-      message: '加载模型列表失败',
+      message: t('model.notifications.loadModelsFailed'),
       position: 'top',
     })
   }
@@ -1325,7 +1325,7 @@ const fetchModelFiles = async () => {
     console.error('Failed to fetch model files:', error)
     $q.notify({
       type: 'negative',
-      message: '获取模型文件列表失败',
+      message: t('model.notifications.loadFilesFailed'),
       position: 'top'
     })
     
@@ -1418,11 +1418,11 @@ const loadPreview = async (file: ModelFile) => {
       
       // 使用模拟内容
       if (file.name.endsWith('.yaml')) {
-        previewContent.value = `# 训练参数\ntrain: ../train/images\nval: ../valid/images\n\nncls: 3\nnames: ['person', 'car', 'bicycle']\n\nephocs: 50\nbatch: 16\nimg_size: 640`
+        previewContent.value = `# ${t('model.training.title')}\ntrain: ../train/images\nval: ../valid/images\n\nncls: 3\nnames: ['person', 'car', 'bicycle']\n\nephocs: 50\nbatch: 16\nimg_size: 640`
       } else if (file.name.endsWith('.csv')) {
         previewContent.value = `epoch,train_loss,val_loss,precision,recall,mAP50,mAP50-95\n0,1.592,1.235,0.6257,0.5382,0.5932,0.4022\n1,1.023,0.876,0.7235,0.6821,0.7135,0.5124\n2,0.692,0.533,0.8353,0.7921,0.8235,0.6532`
       } else {
-        previewContent.value = `无法加载文件内容：${file.name}`
+        previewContent.value = t('model.files.unableToLoadContent', { name: file.name })
       }
     }
     

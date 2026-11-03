@@ -21,11 +21,11 @@
                                 </div>
                                 <div class="text-caption q-mt-xs">
                                     <q-icon name="image" color="primary" size="sm" />
-                                    {{ sourceImages.length }} 张图片
+                                    {{ t('generateData.sourceDataset.imageCount', { count: sourceImages.length }) }}
                                 </div>
                                 <div class="text-caption q-mt-xs">
                                     <q-icon name="label" color="primary" size="sm" />
-                                    {{ getAnnotatedCount() }} 张已标注
+                                    {{ t('generateData.sourceDataset.annotatedCount', { count: getAnnotatedCount() }) }}
                                 </div>
                             </q-card-section>
 
@@ -40,21 +40,21 @@
                                 ]" color="primary" />
 
                                 <template v-if="targetDatasetOption === 'new'">
-                                    <q-input v-model="newDatasetName" label="新数据集名称" class="q-mt-sm" dense
+                                    <q-input v-model="newDatasetName" :label="t('generateData.targetDataset.new.name.label')" class="q-mt-sm" dense
                                         :rules="[val => !!val || t('generateData.targetDataset.new.name.required')]" />
                                     <q-select 
                                         v-model="newDatasetType" 
                                         :options="datasetTypeOptions" 
                                         option-label="label"
                                         option-value="value"
-                                        label="数据集类型"
+                                        :label="t('generateData.targetDataset.type')"
                                         class="q-mt-sm" 
                                         dense 
                                     />
                                 </template>
 
                                 <template v-if="targetDatasetOption === 'existing'">
-                                    <q-select v-model="selectedTargetDataset" :options="availableDatasets" label="选择数据集"
+                                    <q-select v-model="selectedTargetDataset" :options="availableDatasets" :label="t('generateData.targetDataset.select')"
                                         option-label="name" option-value="id" class="q-mt-sm" dense
                                         :rules="[val => !!val || t('generateData.targetDataset.existing.select')]" />
                                 </template>
@@ -534,7 +534,7 @@ const loadData = async () => {
         pipelines.value = await pipelineService.getPipelines()
 
         // 设置默认值
-        newDatasetName.value = `${props.sourceDataset.name}_生成`
+        newDatasetName.value = `${props.sourceDataset.name}${t('generateData.nameSuffix')}`
         newDatasetType.value = datasetTypeOptions.find(option => option.value === props.sourceDataset.type)
 
     } catch (error) {
@@ -681,7 +681,9 @@ const generatePreview = async () => {
                 const { processedImage, processedAnnotation } = processResult(result, instance)
                 // Add operation result to this image's preview
                 previewsByImage[img.id].operations.push({
-                    operationName: instance.name || (instance.type === 'operation' ? '操作' : '流水线'),
+                    operationName: instance.name || t(instance.type === 'operation'
+                        ? 'generateData.sourceDataset.operation'
+                        : 'generateData.operations.pipeline'),
                     operationType: instance.type,
                     processedImage,
                     processedAnnotation: processedAnnotation || originalAnnotation
@@ -713,7 +715,7 @@ const generateData = async () => {
         showProgressDialog.value = true
         progressValue.value = 0
         progressText.value = t('common.loading')
-        progressStatus.value = '正在准备数据...'
+        progressStatus.value = t('generateData.progress.preparing')
 
         // Prepare target dataset
         let targetDatasetId = await prepareTargetDataset()
@@ -764,8 +766,15 @@ const generateData = async () => {
                     // Update progress
                     processedCount++
                     progressValue.value = processedCount / totalOperations
-                    progressText.value = `已处理 ${processedCount} / ${totalOperations} 个操作`
-                    progressStatus.value = `正在生成: ${instance.name || '操作'} (${processedCount}/${totalOperations})`
+                    progressText.value = t('generateData.progress.processed', {
+                        count: processedCount,
+                        total: totalOperations
+                    })
+                    progressStatus.value = t('generateData.progress.generating', {
+                        name: instance.name || t('generateData.sourceDataset.operation'),
+                        count: processedCount,
+                        total: totalOperations
+                    })
                 }
             }
         }
@@ -801,7 +810,7 @@ const generateData = async () => {
 const prepareTargetDataset = async () => {
     if (targetDatasetOption.value === 'new') {
         // 创建新数据集
-        progressStatus.value = '正在创建目标数据集...'
+        progressStatus.value = t('generateData.progress.creatingTarget')
         const newDataset = await annotationService.createDataset({
             name: newDatasetName.value,
             type: newDatasetType.value?.value

@@ -22,11 +22,11 @@
           <!-- 参数设置 -->
           <div class="text-subtitle1 q-mb-sm">{{ t('modelTester.params.title') }}</div>
 
-          <div class="text-caption text-grey q-mb-xs">前级（预处理）</div>
+          <div class="text-caption text-grey q-mb-xs">{{ t('modelTester.params.preprocessing') }}</div>
           <q-input
             v-model.number="imgSize"
             type="number"
-            label="推理图像尺寸 (imgsz)"
+            :label="t('modelTester.params.imageSize')"
             outlined
             dense
             min="320"
@@ -34,11 +34,11 @@
             step="32"
           />
 
-          <div class="text-caption text-grey q-mt-md q-mb-xs">后级（后处理 / NMS）</div>
+          <div class="text-caption text-grey q-mt-md q-mb-xs">{{ t('modelTester.params.postprocessing') }}</div>
           <q-input
             v-model.number="confThreshold"
             type="number"
-            label="置信度阈值 (conf)"
+            :label="`${t('modelTester.params.confThreshold')} (conf)`"
             outlined
             dense
             min="0"
@@ -48,7 +48,7 @@
           <q-input
             v-model.number="iouThreshold"
             type="number"
-            label="IOU 阈值 (NMS)"
+            :label="`${t('modelTester.params.iouThreshold')} (NMS)`"
             outlined
             dense
             min="0"
@@ -59,7 +59,7 @@
           <q-input
             v-model.number="maxDet"
             type="number"
-            label="最大检测数 (max_det)"
+            :label="t('modelTester.params.maxDetections')"
             outlined
             dense
             min="1"
@@ -69,13 +69,13 @@
           />
           <q-toggle
             v-model="agnosticNms"
-            label="类别无关 NMS (agnostic)"
+            :label="t('modelTester.params.classAgnosticNms')"
             class="q-mt-sm"
             color="primary"
           />
           <q-toggle
             v-model="autoRetest"
-            label="自动重新推理（调参数后自动重测）"
+            :label="t('modelTester.params.autoRetest')"
             class="q-mt-sm"
             color="primary"
           />
@@ -98,7 +98,7 @@
           </q-file>
 
           <q-btn
-            label="摄像头抓拍"
+            :label="t('modelTester.image.cameraCapture')"
             color="amber"
             icon="camera_alt"
             class="q-mt-sm full-width"
@@ -314,12 +314,16 @@ const captureFromCamera = async () => {
       resultImage.value = null;
       detections.value = null;
       imageFile.value = null;
-      $q.notify({ type: 'positive', message: '抓拍成功', position: 'top' });
+      $q.notify({ type: 'positive', message: t('modelTester.notifications.captureSuccess'), position: 'top' });
     } else {
-      $q.notify({ type: 'negative', message: '抓拍失败', position: 'top' });
+      $q.notify({ type: 'negative', message: t('modelTester.notifications.captureFailed'), position: 'top' });
     }
   } catch (e: any) {
-    $q.notify({ type: 'negative', message: '摄像头抓拍失败: ' + e.message, position: 'top' });
+    $q.notify({
+      type: 'negative',
+      message: t('modelTester.notifications.cameraCaptureFailed', { error: e.message }),
+      position: 'top'
+    });
   } finally {
     capturing.value = false;
   }

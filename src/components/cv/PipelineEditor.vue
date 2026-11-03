@@ -5,14 +5,14 @@
       <q-card-section class="editor-header row items-center q-py-sm">
         <div class="row items-center">
           <q-icon name="account_tree" size="24px" color="info" class="q-mr-sm" />
-          <div class="text-h6">{{ pipeline.id ? '编辑流水线' : '新建流水线' }}</div>
+          <div class="text-h6">{{ t(pipeline.id ? 'cv.pipelineEditor.title.edit' : 'cv.pipelineEditor.title.new') }}</div>
         </div>
         <q-space />
         <q-btn-group flat>
-          <q-btn color="secondary" icon="science" label="运行" @click="showTestPanel = true" />
-          <q-btn :loading="saving" color="primary" icon="save" label="保存" @click="handleSubmit" />
+          <q-btn color="secondary" icon="science" :label="t('cv.pipelineEditor.actions.run')" @click="showTestPanel = true" />
+          <q-btn :loading="saving" color="primary" icon="save" :label="t('cv.pipelineEditor.actions.save')" @click="handleSubmit" />
           <q-btn flat icon="close" @click="handleClose">
-            <q-tooltip>关闭</q-tooltip>
+            <q-tooltip>{{ t('cv.pipelineEditor.actions.close') }}</q-tooltip>
           </q-btn>
         </q-btn-group>
       </q-card-section>
@@ -23,17 +23,17 @@
           <div class="col-auto form-panel">
             <div class="form-container">
               <!-- 基本信息卡片 -->
-              <q-expansion-item default-opened icon="info" label="基本信息" header-class="text-primary">
+              <q-expansion-item default-opened icon="info" :label="t('cv.pipelineEditor.basicInfo.title')" header-class="text-primary">
                 <q-card flat bordered>
                   <q-card-section>
-                    <q-input v-model="localPipeline.name" label="流水线名称" :rules="[val => !!val || '请输入流水线名称']"
+                    <q-input v-model="localPipeline.name" :label="t('cv.pipelineEditor.basicInfo.name')" :rules="[val => !!val || t('cv.pipelineEditor.basicInfo.nameRequired')]"
                       class="q-mb-md" outlined dense>
                       <template v-slot:prepend>
                         <q-icon name="label" />
                       </template>
                     </q-input>
 
-                    <q-input v-model="localPipeline.description" label="描述" type="textarea" class="q-mb-md" outlined
+                    <q-input v-model="localPipeline.description" :label="t('cv.pipelineEditor.basicInfo.description')" type="textarea" class="q-mb-md" outlined
                       dense autogrow>
                       <template v-slot:prepend>
                         <q-icon name="description" />
@@ -44,7 +44,7 @@
               </q-expansion-item>
 
               <!-- 节点工具箱 -->
-              <q-expansion-item default-opened icon="widgets" label="节点工具箱" header-class="text-primary">
+              <q-expansion-item default-opened icon="widgets" :label="t('cv.pipelineEditor.nodeToolbox.title')" header-class="text-primary">
                 <q-card flat bordered>
                   <q-card-section>
                     <div class="row q-col-gutter-sm">
@@ -64,7 +64,7 @@
               </q-expansion-item>
 
               <!-- 节点属性编辑器 -->
-              <q-expansion-item v-if="selectedNode" default-opened icon="tune" label="节点属性" header-class="text-primary">
+              <q-expansion-item v-if="selectedNode" default-opened icon="tune" :label="t('cv.pipelineEditor.nodeProperties.title')" header-class="text-primary">
                 <q-card flat bordered>
                   <q-card-section>
                     <div class="row q-col-gutter-md">
@@ -73,7 +73,7 @@
                         <div class="col-12">
                           <div class="text-subtitle1 q-mb-md">
                             <q-icon name="input" class="q-mr-sm" />
-                            输入参数配置
+                            {{ t('cv.pipelineEditor.parameters.inputTitle') }}
                           </div>
                         </div>
 
@@ -86,7 +86,7 @@
                                   <div class="row full-width q-col-gutter-sm">
                                     <div class="col-12">
                                       <div class="row items-center justify-between">
-                                        <div class="text-subtitle2">参数 {{ index + 1 }}</div>
+                                        <div class="text-subtitle2">{{ t('cv.pipelineEditor.parameters.item', { index: index + 1 }) }}</div>
                                         <q-btn flat round dense color="negative" icon="delete"
                                           @click="removeInputParam(index)" />
                                       </div>
@@ -96,7 +96,7 @@
                                 </q-item>
                               </q-list>
                             </div>
-                            <q-btn flat class="full-width q-mt-sm" icon="add" label="添加输入参数" @click="addInputParam" />
+                            <q-btn flat class="full-width q-mt-sm" icon="add" :label="t('cv.pipelineEditor.parameters.addInput')" @click="addInputParam" />
                           </div>
                         </div>
                       </template>
@@ -106,7 +106,7 @@
                         <div class="col-12">
                           <div class="text-subtitle1 q-mb-md">
                             <q-icon name="output" class="q-mr-sm" />
-                            输出参数配置
+                            {{ t('cv.pipelineEditor.parameters.outputTitle') }}
                           </div>
                         </div>
 
@@ -119,7 +119,7 @@
                                   <div class="row full-width q-col-gutter-sm">
                                     <div class="col-12">
                                       <div class="row items-center justify-between">
-                                        <div class="text-subtitle2">参数 {{ index + 1 }}</div>
+                                        <div class="text-subtitle2">{{ t('cv.pipelineEditor.parameters.item', { index: index + 1 }) }}</div>
                                         <q-btn flat round dense color="negative" icon="delete"
                                           @click="removeOutputParam(index)" />
                                       </div>
@@ -131,7 +131,7 @@
                                       <q-select
                                         :model-value="getEndNodeOutputMapping(param.name)"
                                         :options="getEndNodeOutputOptions().filter(opt => opt.type === param.type)"
-                                        label="映射到节点输出"
+                                        :label="t('cv.pipelineEditor.parameters.mapOutput')"
                                         outlined
                                         dense
                                         emit-value
@@ -144,7 +144,7 @@
                                         <template v-slot:no-option>
                                           <q-item>
                                             <q-item-section class="text-grey">
-                                              没有找到匹配类型的节点输出
+                                              {{ t('cv.pipelineEditor.parameters.noMatchingOutput') }}
                                             </q-item-section>
                                           </q-item>
                                         </template>
@@ -154,7 +154,7 @@
                                 </q-item>
                               </q-list>
                             </div>
-                            <q-btn flat class="full-width q-mt-sm" icon="add" label="添加输出参数" @click="addOutputParam" />
+                            <q-btn flat class="full-width q-mt-sm" icon="add" :label="t('cv.pipelineEditor.parameters.addOutput')" @click="addOutputParam" />
                           </div>
                         </div>
                       </template>
@@ -162,7 +162,7 @@
                       <!-- For other nodes (not START or END), show regular properties -->
                       <template v-else>
                         <div class="col-12">
-                          <q-input v-model="selectedNode.name" label="节点名称" outlined dense>
+                          <q-input v-model="selectedNode.name" :label="t('cv.pipelineEditor.nodeProperties.name')" outlined dense>
                             <template v-slot:prepend>
                               <q-icon name="title" />
                             </template>
@@ -173,7 +173,7 @@
                         <template v-if="selectedNode.type === NodeType.OPERATION">
                           <div class="col-12">
                             <q-select v-model="selectedNode.operationId" :options="models" option-value="id"
-                              option-label="name" label="选择 YOLO 模型" outlined dense emit-value map-options use-input
+                              option-label="name" :label="t('cv.pipelineEditor.nodeProperties.operation')" outlined dense emit-value map-options use-input
                               input-debounce="300" @update:model-value="handleOperationChange">
                               <template v-slot:prepend>
                                 <q-icon name="smart_toy" />
@@ -181,7 +181,7 @@
                               <template v-slot:no-option>
                                 <q-item>
                                   <q-item-section class="text-grey">
-                                    没有找到已训练的模型，请先训练模型
+                                    {{ t('cv.pipelineEditor.parameters.noTrainedModels') }}
                                   </q-item-section>
                                 </q-item>
                               </template>
@@ -200,7 +200,7 @@
                           <div v-if="selectedOperation" class="col-12 q-mt-md">
                             <div class="text-subtitle1 q-mb-sm">
                               <q-icon name="settings" class="q-mr-xs" />
-                              参数配置
+                              {{ t('cv.pipelineEditor.nodeProperties.parameters.title') }}
                               <q-spinner v-if="loadingOperation" size="1em" class="q-ml-xs" />
                             </div>
                             <q-card flat bordered class="operation-params">
@@ -216,13 +216,13 @@
                                             {{ param.type }}
                                           </q-chip>
                                         </div>
-                                        <q-item-label caption>{{ param.description || '无描述' }}</q-item-label>
+                                        <q-item-label caption>{{ param.description || t('cv.pipelineEditor.parameters.noDescription') }}</q-item-label>
                                       </div>
 
                                       <div class="col-12">
                                         <!-- 参数值来源选择 -->
                                         <q-select :model-value="getParamConfigValue(selectedNode, param.name, 'source')"
-                                          :options="getParamSourceOptions(param)" label="值来源" outlined dense emit-value
+                                          :options="getParamSourceOptions(param)" :label="t('cv.pipelineEditor.nodeProperties.parameters.valueSource')" outlined dense emit-value
                                           map-options
                                           @update:model-value="value => updateNodeParamConfig(param.name, 'source', value)">
                                           <template v-slot:prepend>
@@ -236,14 +236,14 @@
                                         class="col-12">
                                         <template v-if="param.type === ParamType.TEXT">
                                           <q-input :model-value="getParamConfigValue(selectedNode, param.name, 'value')"
-                                            label="自定义值" outlined dense
+                                            :label="t('cv.pipelineEditor.nodeProperties.parameters.customValue')" outlined dense
                                             @update:model-value="value => updateNodeParamConfig(param.name, 'value', value)">
                                           </q-input>
                                         </template>
 
                                         <template v-else-if="param.type === ParamType.NUMBER">
                                           <q-input :model-value="getParamConfigValue(selectedNode, param.name, 'value')"
-                                            type="number" label="自定义值" outlined dense
+                                            type="number" :label="t('cv.pipelineEditor.nodeProperties.parameters.customValue')" outlined dense
                                             @update:model-value="value => updateNodeParamConfig(param.name, 'value', value)">
                                           </q-input>
                                         </template>
@@ -251,14 +251,14 @@
                                         <template v-else-if="param.type === ParamType.BOOLEAN">
                                           <q-toggle
                                             :model-value="getParamConfigValue(selectedNode, param.name, 'value')"
-                                            label="自定义值"
+                                            :label="t('cv.pipelineEditor.nodeProperties.parameters.customValue')"
                                             @update:model-value="value => updateNodeParamConfig(param.name, 'value', value)">
                                           </q-toggle>
                                         </template>
 
                                         <template v-else>
                                           <q-input :model-value="getParamConfigValue(selectedNode, param.name, 'value')"
-                                            type="textarea" label="自定义值 (JSON格式)" outlined dense
+                                            type="textarea" :label="t('cv.pipelineEditor.nodeProperties.parameters.customValueJson')" outlined dense
                                             @update:model-value="value => updateNodeParamConfig(param.name, 'value', value)">
                                           </q-input>
                                         </template>
@@ -274,8 +274,8 @@
                         <!-- 条件节点特有属性 -->
                         <template v-if="selectedNode.type === NodeType.CONDITION">
                           <div class="col-12">
-                            <q-input v-model="selectedNode.config!.condition" label="条件表达式" outlined dense
-                              hint="使用JavaScript表达式，例如: input.value > 10">
+                            <q-input v-model="selectedNode.config!.condition" :label="t('cv.pipelineEditor.parameters.condition')" outlined dense
+                              :hint="t('cv.pipelineEditor.parameters.conditionHint')">
                               <template v-slot:prepend>
                                 <q-icon name="code" />
                               </template>
@@ -294,31 +294,31 @@
           <div class="col flow-panel">
             <q-card flat bordered class="flow-editor-card">
               <q-card-section class="flow-editor-header">
-                <div class="text-subtitle2">流水线设计器</div>
+                <div class="text-subtitle2">{{ t('cv.pipelineEditor.flowEditor.title') }}</div>
                 <q-space />
                 <q-btn-group flat>
                   <q-btn flat dense icon="undo" @click="undo" :disable="!canUndo">
-                    <q-tooltip>撤销 (Ctrl+Z)</q-tooltip>
+                    <q-tooltip>{{ t('cv.pipelineEditor.flowEditor.undo') }}</q-tooltip>
                   </q-btn>
                   <q-btn flat dense icon="redo" @click="redo" :disable="!canRedo">
-                    <q-tooltip>重做 (Ctrl+Y)</q-tooltip>
+                    <q-tooltip>{{ t('cv.pipelineEditor.flowEditor.redo') }}</q-tooltip>
                   </q-btn>
                   <q-separator vertical inset />
                   <q-btn flat dense icon="delete" @click="deleteSelected" :disable="!selectedNode && !selectedEdge">
-                    <q-tooltip>删除选中元素 (Delete)</q-tooltip>
+                    <q-tooltip>{{ t('cv.pipelineEditor.flowEditor.delete') }}</q-tooltip>
                   </q-btn>
                   <q-separator vertical inset />
                   <q-btn flat dense icon="delete_sweep" @click="clearCanvas">
-                    <q-tooltip>清空画布</q-tooltip>
+                    <q-tooltip>{{ t('cv.pipelineEditor.flowEditor.clear') }}</q-tooltip>
                   </q-btn>
                   <q-btn flat dense icon="center_focus_strong" @click="centerView">
-                    <q-tooltip>居中视图</q-tooltip>
+                    <q-tooltip>{{ t('cv.pipelineEditor.flowEditor.center') }}</q-tooltip>
                   </q-btn>
                   <q-btn flat dense icon="zoom_in" @click="zoomIn">
-                    <q-tooltip>放大</q-tooltip>
+                    <q-tooltip>{{ t('cv.pipelineEditor.flowEditor.zoomIn') }}</q-tooltip>
                   </q-btn>
                   <q-btn flat dense icon="zoom_out" @click="zoomOut">
-                    <q-tooltip>缩小</q-tooltip>
+                    <q-tooltip>{{ t('cv.pipelineEditor.flowEditor.zoomOut') }}</q-tooltip>
                   </q-btn>
                 </q-btn-group>
               </q-card-section>
@@ -338,6 +338,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { Pipeline, NodeType, EdgeType, NodeConfig, EdgeConfig } from '@/services/pipeline'
 import { ParamType } from '@/services/cv_operation'
 import { cvOperationService } from '@/services/cv_operation'
@@ -350,6 +351,7 @@ import '@logicflow/core/dist/index.css'
 import { v4 as uuidv4 } from 'uuid'
 
 const $q = useQuasar()
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: boolean
@@ -446,15 +448,16 @@ const getNodeIcon = (nodeType: NodeType) => {
 
 // 获取节点标签
 const getNodeLabel = (nodeType: NodeType) => {
-  const labelMap: Record<NodeType, string> = {
-    [NodeType.START]: '开始',
-    [NodeType.END]: '结束',
-    [NodeType.OPERATION]: '操作',
-    [NodeType.PARALLEL]: '并行',
-    [NodeType.MERGE]: '合并',
-    [NodeType.CONDITION]: '条件'
+  const labelKeys: Partial<Record<NodeType, string>> = {
+    [NodeType.START]: 'start',
+    [NodeType.END]: 'end',
+    [NodeType.OPERATION]: 'operation',
+    [NodeType.PARALLEL]: 'parallel',
+    [NodeType.MERGE]: 'merge',
+    [NodeType.CONDITION]: 'condition'
   }
-  return labelMap[nodeType] || '未知'
+  const key = labelKeys[nodeType]
+  return key ? t(`cv.pipelineEditor.nodeTypes.${key}`) : t('cv.pipelineEditor.nodeTypes.unknown')
 }
 
 // 操作搜索
@@ -507,7 +510,7 @@ const handleOperationChange = async (operationId: number) => {
     selectedOperation.value = null
     $q.notify({
       type: 'negative',
-      message: '获取操作详情失败'
+      message: t('cv.pipelineEditor.notifications.operationLoadError')
     })
   }
 }
@@ -566,14 +569,14 @@ const getParamConfigValue = (node: NodeConfig | null, paramName: string, field: 
 // 获取参数来源选项
 const getParamSourceOptions = (param: any) => {
   const options = [
-    { label: '自定义值', value: 'custom' }
+    { label: t('cv.pipelineEditor.nodeProperties.parameters.customValue'), value: 'custom' }
   ]
 
   // 添加流水线输入参数作为可能的来源
   localPipeline.value.inputParams?.forEach(input => {
     if (input.type === param.type) {
       options.push({
-        label: `流水线输入: ${input.name}`,
+        label: t('cv.pipelineEditor.parameters.pipelineInput', { name: input.name }),
         value: `input:${input.name}`
       })
     }
@@ -591,7 +594,10 @@ const getParamSourceOptions = (param: any) => {
         operation.outputParams.forEach((output: { name: string; type: ParamType }) => {
           if (output.type === param.type) {
             options.push({
-              label: `${node.name || getNodeLabel(node.type)} 输出: ${output.name}`,
+              label: t('cv.pipelineEditor.parameters.nodeOutput', {
+                node: node.name || getNodeLabel(node.type),
+                name: output.name
+              }),
               value: `node:${node.id}:${output.name}`
             })
           }
@@ -658,13 +664,13 @@ const initLogicFlow = async () => {
       initNodeData(data: any) {
         super.initNodeData(data)
         this.targetRules.push({
-          message: '操作节点只能有一个入度',
+          message: t('cv.pipelineEditor.notifications.operationOnlyEdge'),
           validate: (sourceNode: any, targetNode: any, sourceAnchor: any, targetAnchor: any) => {
             return this.incoming.edges.length < 1
           }
         })
         this.sourceRules.push({
-          message: '操作节点只能有一个出度',
+          message: t('cv.pipelineEditor.notifications.operationOnlyOutgoingEdge'),
           validate: (sourceNode: any, targetNode: any, sourceAnchor: any, targetAnchor: any) => {
             return this.outgoing.edges.length < 1
           }
@@ -691,13 +697,13 @@ const initLogicFlow = async () => {
         super.initNodeData(data)
 
         this.targetRules.push({
-          message: '条件节点只能有一个入度',
+          message: t('cv.pipelineEditor.notifications.invalidConditionInputCount'),
           validate: (sourceNode: any, targetNode: any, sourceAnchor: any, targetAnchor: any) => {
             return this.incoming.edges.length < 1
           }
         })
         this.sourceRules.push({
-          message: '条件节点只能有两个出度',
+          message: t('cv.pipelineEditor.notifications.invalidConditionOutputCount'),
           validate: (sourceNode: any, targetNode: any, sourceAnchor: any, targetAnchor: any) => {
             return this.outgoing.edges.length < 2
           }
@@ -724,7 +730,7 @@ const initLogicFlow = async () => {
         super.initNodeData(data)
 
         this.targetRules.push({
-          message: '并行节点只能有一个入度，可以有多个出度',
+          message: t('cv.pipelineEditor.notifications.invalidParallelInputCount'),
           validate: (sourceNode: any, targetNode: any, sourceAnchor: any, targetAnchor: any) => {
             return this.incoming.edges.length < 1
           }
@@ -753,7 +759,7 @@ const initLogicFlow = async () => {
         super.initNodeData(data)
 
         this.sourceRules.push({
-          message: '合并节点只能有一个出度，可以有多个入度',
+          message: t('cv.pipelineEditor.notifications.invalidMergeOutputCount'),
           validate: (sourceNode: any, targetNode: any, sourceAnchor: any, targetAnchor: any) => {
             return this.outgoing.edges.length < 1
           }
@@ -783,7 +789,7 @@ const initLogicFlow = async () => {
 
         // Start nodes can only have outgoing connections
         const startRules = {
-          message: '开始节点只能有出度，不能有入度',
+          message: t('cv.pipelineEditor.notifications.invalidStartEdges'),
           validate: (sourceNode: any, targetNode: any, sourceAnchor: any, targetAnchor: any) => {
             return this.outgoing.edges.length < 1 && this.incoming.edges.length === 0
           }
@@ -813,7 +819,7 @@ const initLogicFlow = async () => {
 
         // End nodes can only have incoming connections
         const endRules = {
-          message: '结束节点只能有入度，不能有出度',
+          message: t('cv.pipelineEditor.notifications.invalidEndEdges'),
           validate: (sourceNode: any, targetNode: any, sourceAnchor: any, targetAnchor: any) => {
             return this.incoming.edges.length < 1 && this.outgoing.edges.length === 0
           }
@@ -915,7 +921,7 @@ const initLogicFlow = async () => {
     console.error('初始化LogicFlow失败:', error)
     $q.notify({
       type: 'negative',
-      message: '初始化流水线设计器失败'
+      message: t('cv.pipelineEditor.notifications.initFailed')
     })
   }
 }
@@ -958,8 +964,8 @@ const initializeCanvas = () => {
             type: edge.type || EdgeType.NORMAL,
             sourceNodeId: edge.source,
             targetNodeId: edge.target,
-            text: edge.type === EdgeType.TRUE ? '是' :
-              edge.type === EdgeType.FALSE ? '否' : '',
+            text: edge.type === EdgeType.TRUE ? t('cv.pipelineEditor.flowEditor.yes') :
+              edge.type === EdgeType.FALSE ? t('cv.pipelineEditor.flowEditor.no') : '',
             properties: {
               edgeType: edge.type
             }
@@ -1021,7 +1027,7 @@ const initializeCanvas = () => {
     console.error('初始化画布失败:', error)
     $q.notify({
       type: 'negative',
-      message: '初始化画布失败'
+      message: t('cv.pipelineEditor.notifications.invalidCanvas')
     })
   }
 }
@@ -1103,7 +1109,7 @@ const deleteSelected = () => {
     if (selectedNode.value.type === NodeType.START || selectedNode.value.type === NodeType.END) {
       $q.notify({
         type: 'warning',
-        message: '不能删除开始和结束节点'
+        message: t('cv.pipelineEditor.notifications.cannotDeleteStartEnd')
       })
       return
     }
@@ -1148,8 +1154,8 @@ const clearCanvas = () => {
   if (!lf.value) return
 
   $q.dialog({
-    title: '确认清空',
-    message: '确定要清空流水线设计吗？此操作不可恢复。',
+    title: t('cv.pipelineEditor.flowEditor.clearConfirmTitle'),
+    message: t('cv.pipelineEditor.flowEditor.clearConfirmMessage'),
     cancel: true,
     persistent: true
   }).onOk(() => {
@@ -1268,7 +1274,9 @@ const validatePipeline = () => {
     if (!node.operationId) {
       $q.notify({
         type: 'negative',
-        message: `操作节点 "${node.name || '未命名'}" 没有选择操作`
+        message: t('cv.pipelineEditor.notifications.operationNotSelected', {
+          name: node.name || t('cv.pipelineEditor.nodeProperties.name')
+        })
       });
       return false;
     }
@@ -1371,7 +1379,7 @@ const bindEvents = () => {
           selectedOperation.value = null
           $q.notify({
             type: 'negative',
-            message: '加载操作详情失败'
+            message: t('cv.pipelineEditor.notifications.operationLoadFailed')
           })
         } finally {
           loadingOperation.value = false
@@ -1625,7 +1633,10 @@ const getEndNodeOutputOptions = () => {
       if (operation?.outputParams) {
         operation.outputParams.forEach((output: { name: string; type: ParamType }) => {
           options.push({
-            label: `${node.name || getNodeLabel(node.type)} 输出: ${output.name}`,
+            label: t('cv.pipelineEditor.parameters.nodeOutput', {
+              node: node.name || getNodeLabel(node.type),
+              name: output.name
+            }),
             value: `node:${node.id}:${output.name}`,
             type: output.type
           })

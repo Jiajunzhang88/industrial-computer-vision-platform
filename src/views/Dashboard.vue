@@ -232,11 +232,11 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useDashboard } from '../services/dashboard';
 import { format, fromUnixTime } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { enUS, zhCN } from 'date-fns/locale';
 import Chart from 'chart.js/auto';
 import { useI18n } from 'vue-i18n';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 // 获取仪表板服务
 const { 
@@ -266,9 +266,11 @@ let refreshInterval = null;
 const formatDate = (timestamp) => {
   try {
     const date = fromUnixTime(timestamp / 1000);
-    return format(date, 'yyyy-MM-dd HH:mm', { locale: zhCN });
+    return format(date, 'yyyy-MM-dd HH:mm', {
+      locale: locale.value.startsWith('zh') ? zhCN : enUS
+    });
   } catch (e) {
-    return '无效日期';
+    return t('dashboard.invalidDate');
   }
 };
 

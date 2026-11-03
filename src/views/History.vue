@@ -19,10 +19,10 @@
               <div class="col-12 col-md-3">
                 <q-select
                   v-model="filters.status"
-                  :options="['全部', '合格', '不合格']"
+                  :options="['all', 'pass', 'fail']"
                   dense
                   outlined
-                  :option-label="(val) => t(`history.status.${val === '全部' ? 'all' : (val === '合格' ? 'pass' : 'fail')}`)"
+                  :option-label="(val) => t(`history.status.${val}`)"
                   :label="t('history.status.title')"
                   class="full-width"
                   @update:model-value="searchRecords"
@@ -221,7 +221,7 @@ import { formatDate } from '@/utils/date'
 import * as XLSX from 'xlsx'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const $q = useQuasar()
 
 // 状态
@@ -271,7 +271,7 @@ watch(() => pagination.page, (newPage) => {
 // 过滤器
 const filters = reactive({
   searchText: '',
-  status: '全部',
+  status: 'all',
   dateRange: { from: getTodayMinus(30), to: formatDate(new Date()) } as any,
   dateFrom: '',
   dateTo: ''
@@ -287,7 +287,7 @@ function getTodayMinus(days: number): string {
 function formatDateTime(dateStr: string): string {
   if (!dateStr) return 'N/A'
   const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', {
+  return date.toLocaleString(locale.value.startsWith('zh') ? 'zh-CN' : 'en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -315,7 +315,7 @@ async function loadRecords() {
       page: pagination.page,
       perPage: pagination.rowsPerPage,
       searchText: filters.searchText || undefined,
-      status: filters.status !== '全部' ? filters.status : undefined,
+      status: filters.status !== 'all' ? filters.status : undefined,
       dateFrom: filters.dateFrom || undefined,
       dateTo: filters.dateTo || undefined
     })
@@ -326,7 +326,7 @@ async function loadRecords() {
     console.error('加载历史记录失败:', error)
     $q.notify({
       type: 'negative',
-      message: '加载历史记录失败',
+      message: t('history.notifications.loadFailed'),
       position: 'top'
     })
   } finally {
@@ -380,7 +380,7 @@ async function deleteRecord() {
     
     $q.notify({
       type: 'positive',
-      message: '记录已删除',
+      message: t('history.notifications.deleteSuccess'),
       position: 'top'
     })
     
@@ -390,7 +390,7 @@ async function deleteRecord() {
     console.error('删除记录失败:', error)
     $q.notify({
       type: 'negative',
-      message: '删除记录失败',
+      message: t('history.notifications.deleteFailed'),
       position: 'top'
     })
   }
@@ -416,27 +416,27 @@ function formatDateRangeDisplay(dateRange: any): string {
   const from = dateRange.from.replace(/\//g, '-');
   const to = dateRange.to.replace(/\//g, '-');
   
-  // 将日期格式化为更友好的中文格式
+  const dateLocale = locale.value.startsWith('zh') ? 'zh-CN' : 'en-US'
   try {
     const fromDate = new Date(from);
     const toDate = new Date(to);
     
-    const fromStr = fromDate.toLocaleDateString('zh-CN', {
+    const fromStr = fromDate.toLocaleDateString(dateLocale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
     });
     
-    const toStr = toDate.toLocaleDateString('zh-CN', {
+    const toStr = toDate.toLocaleDateString(dateLocale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
     });
     
-    return `${fromStr} 至 ${toStr}`;
+    return `${fromStr} ${t('common.to')} ${toStr}`;
   } catch (e) {
     // 如果日期解析失败，直接使用原始字符串
-    return `${from} 至 ${to}`;
+    return `${from} ${t('common.to')} ${to}`;
   }
 }
 
@@ -456,7 +456,7 @@ const exportToExcel = async () => {
       page: 1,
       perPage: 100, // 改为100，符合后端API限制
       searchText: filters.searchText || undefined,
-      status: filters.status !== '全部' ? filters.status : undefined,
+      status: filters.status !== 'all' ? filters.status : undefined,
       dateFrom: filters.dateFrom || undefined,
       dateTo: filters.dateTo || undefined
     }
