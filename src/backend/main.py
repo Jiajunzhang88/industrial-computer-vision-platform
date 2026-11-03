@@ -19,6 +19,11 @@ from .dependencies import get_db
 from .models.base import SessionLocal, engine
 from .services.model import ModelService
 from .models import ModelStatus
+from .config.settings import (
+    APP_TITLE, APP_VERSION, CORS_ORIGINS, CORS_ALLOW_CREDENTIALS,
+    CORS_ALLOW_METHODS, CORS_ALLOW_HEADERS, UPLOADS_DIR, DIST_DIR,
+    PIPELINE_INTERVAL, PIPELINE_MODEL_ID, PIPELINE_CONF_THRES, PIPELINE_IOU_THRES,
+)
 import platform
 import pathlib
 
@@ -28,32 +33,30 @@ if platform.system() == "Windows":
 
 # 创建FastAPI应用实例
 app = FastAPI(
-    title="Industrial Monitoring System API",
+    title=APP_TITLE,
     description="Industrial Monitoring System 的后端API服务",
-    version="1.0.0"
+    version=APP_VERSION
 )
 
 # 配置CORS
 app.add_middleware( 
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
+    allow_methods=CORS_ALLOW_METHODS,
+    allow_headers=CORS_ALLOW_HEADERS,
 )
 
 
 # 确保uploads文件夹存在
-uploads_dir = "uploads"
-if not os.path.exists(uploads_dir):
-    os.makedirs(uploads_dir)
+if not os.path.exists(UPLOADS_DIR):
+    os.makedirs(UPLOADS_DIR)
     
-dist_dir = "dist"
-if not os.path.exists(dist_dir):
-    os.makedirs(dist_dir)
+if not os.path.exists(DIST_DIR):
+    os.makedirs(DIST_DIR)
 
 # 配置静态文件路由
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # 注册路由
 app.include_router(annotation_router)
@@ -68,11 +71,11 @@ app.include_router(dashboard_router)
 # ===== 实时检测 Pipeline =====
 pipeline_state = {
     "running": False,
-    "interval": 5,  # 秒
-    "latest": None,  # 最新检测结果
-    "model_id": 1,
-    "conf_thres": 0.5,
-    "iou_thres": 0.7,
+    "interval": PIPELINE_INTERVAL,
+    "latest": None,
+    "model_id": PIPELINE_MODEL_ID,
+    "conf_thres": PIPELINE_CONF_THRES,
+    "iou_thres": PIPELINE_IOU_THRES,
 }
 pipeline_lock = threading.Lock()
 
@@ -196,7 +199,7 @@ def pipeline_worker():
 # 启动 pipeline 后台线程
 threading.Thread(target=pipeline_worker, daemon=True).start()
 
-app.mount("/", StaticFiles(directory=dist_dir, html=True), name="frontend")
+app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
 
 
 # 自动检测和注册摄像头的后台任务

@@ -247,6 +247,14 @@ def get_camera_snapshot(
                     _img_path = _os.path.join(_alarm_dir, f"alarm_{_ts}.jpg")
                     with open(_img_path, "wb") as _f:
                         _f.write(_jpeg.tobytes())
+                    # FIFO：alarm_png 最多保留 20 张，超出删最旧
+                    _all_imgs = sorted(_os.listdir(_alarm_dir))
+                    while len(_all_imgs) > 20:
+                        _oldest = _os.path.join(_alarm_dir, _all_imgs.pop(0))
+                        try:
+                            _os.remove(_oldest)
+                        except Exception:
+                            pass
                     _log_path = _os.path.join(_log_dir, f"detection_{_dt.now().strftime('%Y%m%d')}.log")
                     with open(_log_path, "a", encoding="utf-8") as _lf:
                         _lf.write(f"[{_dt.now().strftime('%Y-%m-%d %H:%M:%S')}] camera={camera_id} op={operation_id} type={operation_type} text={text} confidence={confidence:.4f} dets={len(detections)}\n")
@@ -561,7 +569,7 @@ def _get_record_dir(sub: str) -> str:
     return _dir
 
 @router.get("/record/alarm_images")
-def list_alarm_images(limit: int = 50):
+def list_alarm_images(limit: int = 20):
     """返回最近的报警图片文件名列表（新的在前）"""
     _dir = _get_record_dir("alarm_png")
     files = [f for f in _os_record.listdir(_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))]

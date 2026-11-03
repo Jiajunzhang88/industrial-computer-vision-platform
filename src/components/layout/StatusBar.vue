@@ -279,8 +279,8 @@ onBeforeUnmount(() => {
   .title-content {
     height: 100%;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: left;
+    justify-content: left;
     padding: 0 16px;
     font-weight: 1000;
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);

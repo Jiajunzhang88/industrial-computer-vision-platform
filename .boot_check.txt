@@ -1,4 +1,0 @@
-HTTP 200
-pipelines count: 2
- - id=1 name=轴承正反面识别
- - id=2 name=coin_check

@@ -1,4 +1,0 @@
-﻿generated 32
-dataset 3
-annotated 32
-MODEL_ID 3

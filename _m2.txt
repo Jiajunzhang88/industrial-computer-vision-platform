@@ -1,1 +1,0 @@
-﻿{"id":2,"name":"硬币正反面识别模型","architecture":"yolo_v8","dataset_id":2,"status":"completed","parameters":{"epochs":30,"batch_size":16,"img_size":640,"conf_thres":0.25,"iou_thres":0.45},"metrics":null,"created_at":"2026-10-31T08:59:03.382280","updated_at":"2026-10-31T09:06:08.199146","file_path":"models\\model_2\\weights\\best.pt"}
