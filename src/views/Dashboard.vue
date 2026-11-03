@@ -461,8 +461,8 @@ const loadAllData = async () => {
 onMounted(async () => {
   await loadAllData();
   
-  // 设置定时刷新 (每30秒)
-  refreshInterval = setInterval(loadAllData, 30000);
+  // 设置定时刷新 (每5秒)
+  refreshInterval = setInterval(loadAllData, 5000);
 });
 
 // 组件卸载

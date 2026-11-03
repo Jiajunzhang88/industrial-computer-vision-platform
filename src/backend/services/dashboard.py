@@ -90,9 +90,11 @@ class DashboardService:
             logger.info(f"系统启动时间: {startup_time}, 当前时间: {current_time}, 运行时间: {uptime_hours}小时")
             
             # 获取CPU和内存使用情况
-            cpu_percent = psutil.cpu_percent()
+            cpu_percent = psutil.cpu_percent(interval=0.5)
             memory_percent = psutil.virtual_memory().percent
-            disk_percent = psutil.disk_usage('/').percent
+            import platform as _pf
+            _disk_root = 'C:\\' if _pf.system() == 'Windows' else '/'
+            disk_percent = psutil.disk_usage(_disk_root).percent
             
             # 判断系统状态
             status = "normal"
