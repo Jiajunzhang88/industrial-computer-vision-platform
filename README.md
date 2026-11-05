@@ -1,84 +1,258 @@
+# Industrial Monitoring System
 
+**English** · [简体中文](README.zh-CN.md)
 
-基于深度学习的低代码计算机视觉系统，包含图像采集、智能检测、数据标注、模型训练四大模块。
+> An industrial computer-vision platform covering the full loop — image capture → data annotation → model training → single-operation / pipeline orchestration → realtime detection with alarm archiving — all inside one web UI, with no code rewrite per new scenario.
 
-## 项目特点
+[![Vue](https://img.shields.io/badge/Vue-3.x-42b883)](https://vuejs.org/)
+[![Quasar](https://img.shields.io/badge/Quasar-2.x-1976d2)](https://quasar.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.7%2B-009688)](https://fastapi.tiangolo.com/)
+[![YOLO](https://img.shields.io/badge/Ultralytics-YOLOv8-ff6f00)](https://docs.ultralytics.com/)
+[![License](https://img.shields.io/badge/License-AGPL--3.0-blue)](LICENSE)
 
-- 实时性：单张检测耗时<2秒
-- 准确性：字符识别率≥99.5%
-- 追溯性：所有检测记录可存储6个月
-- 工业级UI：符合工业软件设计规范
-- 设备集成：支持PLC/OPC UA/MES系统对接
+---
 
-## 核心功能
+## Screenshots
 
-- 实时视频流预览与检测
-- 检测结果瀑布流展示
-- 质量统计看板
-- 历史记录查询与管理
-- 标注数据管理与样本库版本控制
-- 模型训练与性能监控
+### Realtime Monitoring
 
-## 技术栈
+Live camera view, operation selection, single test with result playback, and an alarm thumbnail strip (FIFO, up to 20 images, click to view the full frame).
 
-- 前端：Vue 3 + Vite + Quasar
-- 可视化：ECharts工业大屏版
-- 图像处理：OpenCV
-- 深度学习：TensorFlow/PyTorch/ONNX
-- 数据存储：IndexedDB
-- 设备通信：WebSocket + OPC UA
+![Realtime Monitoring](ui_png/Mornitoring_ui.png)
 
-## 启动方式
+### Data Annotation
 
-### 1. 双击 start.bat
+Dataset management on the left, image grid on the right; supports import / capture / rename / export, with annotated images badged.
 
-![alt text](</README-PHOTOS/20250424051101.png>)
+![Data Annotation](ui_png/Annotation.png)
 
-![alt text](</README-PHOTOS/20250424143027.png>)
+### Pipeline Operation
 
-### 2. 点击设置
+A LogicFlow-based visual canvas: drag operation nodes in and wire them into a `Start → Operation → End` execution chain, then run or save from the toolbar.
 
-![alt text](</README-PHOTOS/fc273eca3328921851e2d0ab130b5e4.png>)
+![Pipeline Operation](ui_png/Pipeline.png)
 
-### 3. 修改语言
+---
 
-![alt text](</README-PHOTOS/5d038ed7c1369f2d13502c354727de1.png>)
+## Modules
 
-相机等硬件会自动连接，也可在设置中自行添加。
+| Menu | Route | Capabilities |
+| --- | --- | --- |
+| Dashboard | `/dashboard` | System status (CPU / memory / disk, refreshed every 5s) and detection statistics |
+| Realtime Monitoring | `/realtime` | Live camera preview, operation/pipeline selection, single test, streaming detection, result details, alarm thumbnail strip |
+| History | `/history` | Query and review historical detection records |
+| Data Annotation | `/annotation` | Dataset and sample management, browser-based annotation, export of training data |
+| Model Training | `/model` | Model list, training runs, per-model testing (`/model/test/:id`) |
+| Pipeline Operation | `/cv-operations` | Single-operation management and visual pipeline orchestration |
+| Settings | `/settings` | Language switching, device and system configuration |
 
-### 4. 数据标注
+> All UI strings go through i18n. Six locales are bundled: `zh-CN`, `en`, `fr`, `es`, `ar`, `ary`.
 
-![alt text](</README-PHOTOS/b9014ec2a523cff7a627f09042641f4.png>)
+---
 
-红框内图片是为了训练模型正确找到文本区域
+## Tech Stack
 
-蓝框内图片是为了训练模型正确识别文本内容
+| Layer | Choice |
+| --- | --- |
+| Frontend | Vue 3 + Vite 4 + Quasar 2 + Pinia + vue-router (hash mode) + vue-i18n |
+| Visualization | ECharts / Chart.js (dashboards), LogicFlow (pipeline canvas), Monaco / xterm (scripts and logs) |
+| Image interaction | Konva / Fabric / OpenSeadragon + Annotorious, opencv.js (in-browser preview and annotation) |
+| Backend | FastAPI + Uvicorn, SQLAlchemy + SQLite, Pillow / NumPy / OpenCV |
+| Algorithms | Ultralytics YOLOv8 (detection), PyTorch / TorchVision, scikit-learn |
+| Transport & storage | Axios (REST), socket.io-client, psutil (system metrics) |
+| Deployment | The backend serves the frontend `dist/` itself — single port 8000, no extra Nginx |
 
-### 5. 合成数据
+---
 
-![alt text](/README-PHOTOS/75c3321edb28ee14457d976652e6bc1.jpg)
+## Architecture
 
-### 6. 图像处理
+```mermaid
+flowchart LR
+    subgraph Browser["Browser (Vue 3 + Quasar)"]
+        UI[Pages: Dashboard / Realtime / Annotation / Model / Pipeline / Settings]
+    end
 
-![alt text](</README-PHOTOS/20250424143954.png>)
+    subgraph Server["FastAPI backend :8000"]
+        API[REST API /api/*]
+        PIPE[Pipeline execution engine]
+        CAM[Camera capture]
+        ALARM[Alarm image and log writer]
+        ST[dist static hosting]
+    end
 
-先设置单步处理，再将单步处理通过串联的方式形成流水线处理
+    UI -->|Axios| API
+    API --> PIPE
+    PIPE -->|YOLOv8 inference| MODEL[(Model files)]
+    CAM -->|frames| PIPE
+    PIPE -->|annotated image + boxes| ALARM
+    ALARM --> REC[(record/alarm_png<br/>record/log)]
+    API --> DB[(SQLite<br/>industrial_ocr.db)]
+    ST --> UI
+```
 
-![alt text](</README-PHOTOS/f193d218453a12e65a9970fa06f83dd.png>)
+---
 
-### 7. 模型调用
+## Directory Layout
 
-![alt text](</README-PHOTOS/1f45896e0e349076c2df3fa8cb65858.png>)
+```text
+industrial-computer-vision-platform/
+├── src/
+│   ├── App.vue / main.js
+│   ├── router/               # Routes (hash mode, 7 main pages + 404)
+│   ├── views/                # Pages: Dashboard / Realtime / History / Annotation / Model / CVOperation / Settings
+│   ├── components/           # Feature components: annotation / capture / cv / layout / model / common
+│   ├── services/             # Frontend API layer (axios)
+│   ├── stores/               # Pinia state
+│   ├── i18n/locales/         # 6 locale bundles
+│   ├── styles/ utils/
+│   └── backend/
+│       ├── main.py           # Entry point: routes, mounts dist / uploads / record, warm-up
+│       ├── config/settings.py# Central config (port, paths, thresholds, alarm dirs)
+│       ├── routers/          # REST routers: annotation / camera / cv_operation / dashboard /
+│       │                     #               detection / model / pipeline / settings
+│       ├── services/         # Business logic: capture, detection, pipeline, models, annotation, metrics
+│       ├── models/           # SQLAlchemy models (datasets/images/annotations/pipelines/
+│       │                     #   cv_operations/models/settings/devices/detections/alerts)
+│       └── common/
+├── ui_png/                   # Screenshots used in this document
+├── data/ models/ weights/ runs/   # Datasets, model weights, training artefacts
+├── record/                   # Runtime output: alarm_png/ (alarm images, FIFO 20), log/ (daily logs)
+├── uploads/                  # Uploaded originals and assets
+├── dist/                     # Frontend build output (served by the backend)
+├── 启动系统.bat / start.bat / start.ps1 / start.sh
+├── requirements.txt / package.json / vite.config.ts
+└── industrial_ocr.db         # SQLite database (created on first start)
+```
 
-复制模型ID
+---
 
-![alt text](</README-PHOTOS/1745480781735.jpg>)
+## Quick Start
 
-调用模型
+### Requirements
 
-### 8. 实时监控
+- Python 3.10+ (3.12 recommended)
+- Node.js 16+ (only needed to build the frontend)
+- Windows or Linux; a camera is optional — annotation and model features work without one
 
-![alt text](</README-PHOTOS/bd2d2785fbf9d294e2bd1fa87d5da99.jpg>)
+### Option 1 — One-click launch (Windows, recommended)
 
-在实时监控页面可以选择刚才设置的单步处理或流水线处理来对图像进行修改
+Double-click `启动系统.bat`. The script:
 
+1. checks that `.venv` exists;
+2. starts `uvicorn src.backend.main:app` with the project root as the working directory;
+3. opens <http://127.0.0.1:8000/> automatically after 4 seconds.
+
+Close the server window to stop the system.
+
+### Option 2 — Manual start
+
+```bash
+# 1. Install backend dependencies (first time only)
+python -m venv .venv
+.venv\Scripts\activate          # Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Build the frontend (first time, and after every frontend change)
+npm install
+npm run build                    # outputs to dist/, served by the backend
+
+# 3. Start the backend (must run from the project root)
+python -m uvicorn src.backend.main:app --host 0.0.0.0 --port 8000
+```
+
+- App: <http://127.0.0.1:8000/>
+- API docs: <http://127.0.0.1:8000/docs>
+
+### Frontend development mode (hot reload)
+
+```bash
+# Terminal 1 — backend
+python -m uvicorn src.backend.main:app --reload --port 8000
+
+# Terminal 2 — frontend
+npm run dev
+```
+
+Use the Vite dev-server URL it prints. Before publishing, run `npm run build` — otherwise the backend keeps serving the stale `dist/`.
+
+> `start.bat` is the older script: it creates `.venv`, installs dependencies and starts with `--reload`, which is handy for first-time setup.
+
+---
+
+## End-to-end Workflow
+
+1. **Create a dataset** — open `Data Annotation`, create a dataset (detection or OCR type), import images or capture on the spot.
+2. **Annotate** — draw detection boxes or mark text regions, then export the set for training.
+3. **Train a model** — open `Model Training`, start a run on the dataset, then test it on single images from the model detail page.
+4. **Configure an operation** — in `Pipeline Operation` → `SINGLE OPERATION`, set up a single step (e.g. YOLO detection) with model, confidence and IoU thresholds.
+5. **Build a pipeline** — switch to `PIPELINE OPERATION`, wire operation nodes into a `Start → YOLO → End` chain and save it.
+6. **Run it live** — open `Realtime Monitoring`, pick the operation and hit `SINGLE TEST` to verify once; use `APPLY OPERATION` then `START PROCESSING STREAM` for continuous detection with results and alarm images streamed back.
+
+---
+
+## How It Works
+
+**Pipeline execution engine**
+Nodes fall into four kinds — operation / condition / parallel / merge — and run in topological order, passing images and intermediate data through a `results` dict. A YOLO node falls back to capturing a fresh camera frame when no upstream image exists, so a chain can be debugged in isolation.
+
+**Detection result playback**
+Each detection returns an annotated image (boxes plus confidence) together with details: class, recognized text, confidence and raw detections. The backend redraws the annotated frame from bbox coordinates on the original image, so it never depends on an upstream image that may have been lost in transit.
+
+**Alarm archiving (FIFO)**
+Annotated alarm frames are written to `record/alarm_png/`; once more than 20 exist the oldest is deleted. Logs are written per day to `record/log/detection_YYYYMMDD.log`. The thumbnail strip at the bottom of the Realtime page reads that directory, and clicking any thumbnail opens the full-resolution image.
+
+**Centralized configuration**
+Port, CORS, database, upload directory, default detection thresholds and alarm directories all live in `src/backend/config/settings.py`; business code imports them instead of scattering constants.
+
+**System metrics**
+`psutil` sampling (`cpu_percent(interval=0.5)`) avoids the first-call-zero pitfall; disk usage is measured on `C:\` under Windows, and the Dashboard refreshes every 5 seconds.
+
+---
+
+## API Overview
+
+| Prefix | Purpose |
+| --- | --- |
+| `/api/dashboard` | System status and statistics |
+| `/api/cameras` | Camera discovery, frame capture, streaming detection |
+| `/api/annotation` | Dataset, image and annotation CRUD, import/export |
+| `/api/models` | Model list, training, single-image testing |
+| `/api/pipelines` | Pipeline definition and execution |
+| `/api/cv/operations` | Single-operation (CV Operation) configuration |
+| `/api/detections` | Detection records and alarm image listing |
+| `/api/settings` | System settings and language |
+
+Full interactive documentation is available at `/docs` once the server is running.
+
+---
+
+## Configuration
+
+Key entries in `src/backend/config/settings.py`:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `APP_HOST` / `APP_PORT` | `0.0.0.0` / `8000` | Listen address and port |
+| `DATABASE_URL` | `sqlite:///./industrial_ocr.db` | Database (relative to project root) |
+| `UPLOADS_DIR` | `uploads` | Uploaded assets |
+| `DIST_DIR` | `dist` | Frontend build output |
+| `PIPELINE_INTERVAL` | `5` | Streaming detection interval (seconds) |
+| `PIPELINE_MODEL_ID` / `PIPELINE_CONF_THRES` / `PIPELINE_IOU_THRES` | `1` / `0.5` / `0.7` | Default model and inference thresholds |
+| `RECORD_DIR` | `record` | Root of runtime artefacts |
+| `ALARM_IMAGES_DIR` / `LOGS_DIR` | `record/alarm_png` / `record/log` | Alarm images and logs |
+
+---
+
+## Notes
+
+- **Always start from the project root**: `dist`, `industrial_ocr.db`, `uploads` and `record` are all relative paths — starting elsewhere means no frontend and no database.
+- **Rebuild after frontend changes**: the backend serves `dist/`; `npm run dev` only affects the dev server.
+- **First model load is slow**: warm-up happens at process start, so the first frame after a cold start takes noticeably longer than later ones.
+- **Runtime artefacts are not committed**: `record/`, `dist/`, `uploads/`, `.venv/`, `node_modules/`, `*.db` and `*.log` are ignored via `.gitignore`.
+- **Screenshots**: all images come from `ui_png/`; update the paths here if you replace them.
+
+---
+
+## License
+
+[AGPL-3.0](LICENSE)
